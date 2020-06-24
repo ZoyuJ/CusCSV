@@ -7,11 +7,11 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-using CSVColumnMap = System.Collections.Generic.Dictionary<CSV.CSVEntryAttribute, System.Reflection.MemberInfo>;
-using CSVColumnList = System.Collections.Generic.List<CSV.CSVEntryAttribute>;
-using CSVColumnSortedMap = System.Tuple<System.Collections.Generic.IReadOnlyDictionary<CSV.CSVEntryAttribute, System.Reflection.MemberInfo>, System.Collections.Generic.IReadOnlyList<CSV.CSVEntryAttribute>>;
 
-namespace CSV {
+namespace CSV2 {
+  using CSVColumnMap = System.Collections.Generic.Dictionary<CSV2.CSVEntryAttribute, System.Reflection.MemberInfo>;
+  using CSVColumnList = System.Collections.Generic.List<CSV2.CSVEntryAttribute>;
+  using CSVColumnSortedMap = System.Tuple<System.Collections.Generic.IReadOnlyDictionary<CSV2.CSVEntryAttribute, System.Reflection.MemberInfo>, System.Collections.Generic.IReadOnlyList<CSV2.CSVEntryAttribute>>;
   public abstract class CSVEntryAttribute : Attribute, IComparable<CSVEntryAttribute> {
     public string HeaderText { get; set; }
     public int Order { get; set; }
@@ -103,7 +103,7 @@ namespace CSV {
 
   }
 
-  public class AttributeAndMember:IComparable<AttributeAndMember> {
+  public class AttributeAndMember : IComparable<AttributeAndMember> {
     public readonly CSVEntryAttribute Attribute;
     public readonly MemberInfo Member;
     public AttributeAndMember(CSVEntryAttribute Atribute, MemberInfo Member) {
