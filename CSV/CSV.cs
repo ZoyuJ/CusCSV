@@ -34,17 +34,15 @@ namespace CSV {
 
 
   public class CSVConvert {
-    public static void ClearReflectCache() { ReflactCache.Clear(); }
-    readonly static Dictionary<Type, Dictionary<string, (IReadOnlyDictionary<CSVColumnAttribute, MemberInfo>, IReadOnlyList<CSVColumnAttribute>)>> ReflactCache = new Dictionary<Type, Dictionary<string, (IReadOnlyDictionary<CSVColumnAttribute, MemberInfo>, IReadOnlyList<CSVColumnAttribute>)>>();
-    public static string ToCSV<T>(IEnumerable<T> Ins, string Name = "default", in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
+    public static string ToCSV<T>(IEnumerable<T> Ins, string Name = "default", in bool WriteHeader = true, in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
       StringBuilder CSV = new StringBuilder();
-      ToCSV(Ins, ref CSV, Name, SerializFuncs);
+      ToCSV(Ins, ref CSV, Name, WriteHeader, SerializFuncs);
       return CSV.ToString();
     }
-    public static void ToCSV<T>(IEnumerable<T> Ins, ref StringBuilder CSVBuilder, string Name = "default", in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
+    public static void ToCSV<T>(IEnumerable<T> Ins, ref StringBuilder CSVBuilder, string Name = "default", in bool WriteHeader = true, in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
       var Attr = typeof(T).GetCustomAttributes<CSVTableAttribute>(false).Where(E => E.Name == Name).FirstOrDefault();
       if (Attr != null) {
-        ToHeadersRow<T>(ref CSVBuilder, Attr, out var Map, out var Sorted);
+        ToHeadersRow<T>(ref CSVBuilder, Attr, out var Map, out var Sorted, WriteHeader);
         foreach (var item in Ins) {
           CSVBuilder.AppendLine();
           ToCSVRowLv1(item, ref CSVBuilder, in Attr, Map, Sorted, SerializFuncs: SerializFuncs);
@@ -54,9 +52,13 @@ namespace CSV {
       throw new InvalidOperationException("No CSV Fig");
 
     }
-    static void ToHeadersRow<T>(ref StringBuilder SB, CSVTableAttribute Table, out IReadOnlyDictionary<CSVColumnAttribute, MemberInfo> Map, out IReadOnlyList<CSVColumnAttribute> Sorted, in bool AppendNewLine = false) where T : new() {
+    public static void ToCSVHeader<T>(ref StringBuilder CSVBuilder, string Name = "default", in bool AppendNewLine = false) {
+      var Attr = typeof(T).GetCustomAttributes<CSVTableAttribute>(false).Where(E => E.Name == Name).FirstOrDefault();
+      ToHeadersRow(ref CSVBuilder, Attr, out _, out _, true, AppendNewLine);
+    }
+    static void ToHeadersRow<T>(ref StringBuilder SB, CSVTableAttribute Table, out IReadOnlyDictionary<CSVColumnAttribute, MemberInfo> Map, out IReadOnlyList<CSVColumnAttribute> Sorted, in bool WriteHeader = true, in bool AppendNewLine = false) where T : new() {
       CollectHeaders<T>(Table, out Map, out Sorted);
-      if (SB != null) {
+      if (WriteHeader && SB != null) {
         for (int i = 0; i < Sorted.Count; i++) {
           var HeaderText = Sorted[i].HeaderText ?? Map[Sorted[i]].Name;
           for (int j = 0; j < HeaderText.Length; j++) {
@@ -97,6 +99,8 @@ namespace CSV {
       SB.Remove(SB.Length - 1, 1);
       if (AppendNewLine) SB.AppendLine();
     }
+
+    static readonly Dictionary<Type, Dictionary<string, (IReadOnlyDictionary<CSVColumnAttribute, MemberInfo>, IReadOnlyList<CSVColumnAttribute>)>> ReflactCache = new Dictionary<Type, Dictionary<string, (IReadOnlyDictionary<CSVColumnAttribute, MemberInfo>, IReadOnlyList<CSVColumnAttribute>)>>();
     static bool GetHeaderMapCache<T>(in CSVTableAttribute Table, out IReadOnlyDictionary<CSVColumnAttribute, MemberInfo> Map, out IReadOnlyList<CSVColumnAttribute> Sorted) where T : new() {
       if (ReflactCache.TryGetValue(typeof(T), out var D)) {
         if (D.TryGetValue(Table.Name, out var Is)) {
@@ -143,6 +147,8 @@ namespace CSV {
       Sorted = _Sorted;
       SetHeaderMapCache<T>(Table, Map, Sorted);
     }
+    public static void ClearReflectCache() { ReflactCache.Clear(); }
+
     [Obsolete("Not Support", true)]
     static IEnumerable<string> EveryLine(string Data, string LineSpread) {
       int StartIndex = 0;
