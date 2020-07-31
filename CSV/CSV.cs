@@ -34,6 +34,11 @@ namespace CSV {
 
 
   public class CSVConvert {
+    //public class CSVSerializOptions {
+    //  public string DateTimeFormat { get; set; } 
+    //  public bool DateTimeUserUtc { get; set; } = false;
+      
+    //}
     public static string ToCSV<T>(IEnumerable<T> Ins, string Name = "default", in bool WriteHeader = true, in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
       StringBuilder CSV = new StringBuilder();
       ToCSV(Ins, ref CSV, Name, WriteHeader, SerializFuncs);
@@ -42,7 +47,7 @@ namespace CSV {
     public static void ToCSV<T>(IEnumerable<T> Ins, ref StringBuilder CSVBuilder, string Name = "default", in bool WriteHeader = true, in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
       var Attr = typeof(T).GetCustomAttributes<CSVTableAttribute>(false).Where(E => E.Name == Name).FirstOrDefault();
       if (Attr != null) {
-        ToHeadersRow<T>(ref CSVBuilder, Attr, out var Map, out var Sorted, WriteHeader);
+        ToHeadersRow<T>(ref CSVBuilder, Attr, out var Map, out var Sorted, WriteHeader,false);
         foreach (var item in Ins) {
           CSVBuilder.AppendLine();
           ToCSVRowLv1(item, ref CSVBuilder, in Attr, Map, Sorted, SerializFuncs: SerializFuncs);
@@ -52,9 +57,9 @@ namespace CSV {
       throw new InvalidOperationException("No CSV Fig");
 
     }
-    public static void ToCSVHeader<T>(ref StringBuilder CSVBuilder, string Name = "default", in bool AppendNewLine = false) {
+    public static void ToCSVHeader<T>(ref StringBuilder CSVBuilder, string Name = "default", in bool AppendNewLine = false) where T : new() {
       var Attr = typeof(T).GetCustomAttributes<CSVTableAttribute>(false).Where(E => E.Name == Name).FirstOrDefault();
-      ToHeadersRow(ref CSVBuilder, Attr, out _, out _, true, AppendNewLine);
+      ToHeadersRow<T>(ref CSVBuilder, Attr, out _, out _, true, AppendNewLine);
     }
     static void ToHeadersRow<T>(ref StringBuilder SB, CSVTableAttribute Table, out IReadOnlyDictionary<CSVColumnAttribute, MemberInfo> Map, out IReadOnlyList<CSVColumnAttribute> Sorted, in bool WriteHeader = true, in bool AppendNewLine = false) where T : new() {
       CollectHeaders<T>(Table, out Map, out Sorted);
@@ -76,23 +81,32 @@ namespace CSV {
       for (int i = 0; i < Sorted.Count; i++) {
         switch (Map[Sorted[i]]) {
           case PropertyInfo Prop:
-
-            var PContent = (SerializFuncs == null || !SerializFuncs.ContainsKey(Sorted[i].HeaderText)) ? (Prop.GetValue(Ins) ?? "").ToString() : SerializFuncs[Sorted[i].HeaderText](Prop.GetValue(Ins) ?? "");
-            for (int j = 0; j < PContent.Length; j++) {
-              if (PContent[j] == Table.JoinChar) SB.Append('\\');
-              SB.Append(PContent[j]);
+            bool HasNotCustomizSerialFuncP = (SerializFuncs == null || !SerializFuncs.ContainsKey(Sorted[i].HeaderText));
+            var PContent = HasNotCustomizSerialFuncP ? (Prop.GetValue(Ins) ?? "").ToString() : SerializFuncs[Sorted[i].HeaderText](Prop.GetValue(Ins) ?? "");
+            if (!HasNotCustomizSerialFuncP) {
+              SB.Append(PContent);
+            }
+            else {
+              for (int j = 0; j < PContent.Length; j++) {
+                if (PContent[j] == Table.JoinChar) SB.Append('\\');
+                SB.Append(PContent[j]);
+              }
             }
             SB.Append(Table.JoinChar);
             break;
           case FieldInfo Field:
-            var FContent = (SerializFuncs == null || !SerializFuncs.ContainsKey(Sorted[i].HeaderText)) ? (Field.GetValue(Ins) ?? "").ToString() : SerializFuncs[Sorted[i].HeaderText](Field.GetValue(Ins) ?? "");
-            for (int j = 0; j < FContent.Length; j++) {
-              if (FContent[j] == Table.JoinChar) SB.Append('\\');
-              SB.Append(FContent[j]);
+            bool HasNotCustomizSerialFuncF = (SerializFuncs == null || !SerializFuncs.ContainsKey(Sorted[i].HeaderText));
+            var FContent = HasNotCustomizSerialFuncF ? (Field.GetValue(Ins) ?? "").ToString() : SerializFuncs[Sorted[i].HeaderText](Field.GetValue(Ins) ?? "");
+            if (!HasNotCustomizSerialFuncF) {
+              SB.Append(FContent);
+            }
+            else {
+              for (int j = 0; j < FContent.Length; j++) {
+                if (FContent[j] == Table.JoinChar) SB.Append('\\');
+                SB.Append(FContent[j]);
+              } 
             }
             SB.Append(Table.JoinChar);
-            break;
-          default:
             break;
         }
       }
