@@ -27,18 +27,19 @@ namespace CSV {
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
   public class CSVTableAttribute : Attribute {
     public string Name { get; set; } = "default";
-    public char JoinChar { get; set; } = ',';
-    [Obsolete("Not Support", true)]
-    public string NewLineJoinChar { get; set; } = "\r\n";
+    public const char Separator = ',';
+    public const string NewLine = "\r\n";
   }
+  /*
+    RFC 4180 https://tools.ietf.org/html/rfc4180
+     xx1,yy1,zz1 \r\n xx2,yy2,zz2                         => [{xx1,yy1,zz1},{xx2,yy2,zz2}]
+     "xx1","yy1","zz1" \r\n "xx2","yy2","zz2"             => [{xx1,yy1,zz1},{xx2,yy2,zz2}]
+     "xx1","y \r\n , "y1","zz1" \r\n "xx2","yy2","zz2"    => [{xx1,y \r\n \, y1,zz1},{xx2,yy2,zz2}]
+     "x""x1","yy1","zz1" \r\n "xx2","yy2","zz2"           => [{x\"x1,yy1,zz1},{xx2,yy2,zz2}]
+  */
 
+  public partial class CSVConvert {
 
-  public class CSVConvert {
-    //public class CSVSerializOptions {
-    //  public string DateTimeFormat { get; set; } 
-    //  public bool DateTimeUserUtc { get; set; } = false;
-      
-    //}
     public static string ToCSV<T>(IEnumerable<T> Ins, string Name = "default", in bool WriteHeader = true, in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
       StringBuilder CSV = new StringBuilder();
       ToCSV(Ins, ref CSV, Name, WriteHeader, SerializFuncs);
@@ -47,7 +48,7 @@ namespace CSV {
     public static void ToCSV<T>(IEnumerable<T> Ins, ref StringBuilder CSVBuilder, string Name = "default", in bool WriteHeader = true, in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
       var Attr = typeof(T).GetCustomAttributes<CSVTableAttribute>(false).Where(E => E.Name == Name).FirstOrDefault();
       if (Attr != null) {
-        ToHeadersRow<T>(ref CSVBuilder, Attr, out var Map, out var Sorted, WriteHeader,false);
+        ToHeadersRow<T>(ref CSVBuilder, Attr, out var Map, out var Sorted, WriteHeader, false);
         foreach (var item in Ins) {
           CSVBuilder.AppendLine();
           ToCSVRowLv1(item, ref CSVBuilder, in Attr, Map, Sorted, SerializFuncs: SerializFuncs);
@@ -67,16 +68,16 @@ namespace CSV {
         for (int i = 0; i < Sorted.Count; i++) {
           var HeaderText = Sorted[i].HeaderText ?? Map[Sorted[i]].Name;
           for (int j = 0; j < HeaderText.Length; j++) {
-            if (HeaderText[j] == Table.JoinChar) SB.Append('\\');
+            if (HeaderText[j] == CSVTableAttribute.Separator) SB.Append('\\');
             SB.Append(HeaderText[j]);
           }
-          SB.Append(Table.JoinChar);
+          SB.Append(CSVTableAttribute.Separator);
         }
         SB.Remove(SB.Length - 1, 1);
         if (AppendNewLine) SB.AppendLine();
       }
     }
-    static string ToHeadersRowString(CSVTableAttribute Table, in IReadOnlyList<CSVColumnAttribute> Sorted) => string.Join(Table.JoinChar, Sorted.Select(E => E.HeaderText));
+    static string ToHeadersRowString(CSVTableAttribute Table, in IReadOnlyList<CSVColumnAttribute> Sorted) => string.Join(CSVTableAttribute.Separator, Sorted.Select(E => E.HeaderText));
     static void ToCSVRowLv1<T>(T Ins, ref StringBuilder SB, in CSVTableAttribute Table, in IReadOnlyDictionary<CSVColumnAttribute, MemberInfo> Map, in IReadOnlyList<CSVColumnAttribute> Sorted, in bool AppendNewLine = false, in IReadOnlyDictionary<string, Func<object, string>> SerializFuncs = null) where T : new() {
       for (int i = 0; i < Sorted.Count; i++) {
         switch (Map[Sorted[i]]) {
@@ -88,11 +89,11 @@ namespace CSV {
             }
             else {
               for (int j = 0; j < PContent.Length; j++) {
-                if (PContent[j] == Table.JoinChar) SB.Append('\\');
+                if (PContent[j] == CSVTableAttribute.Separator) SB.Append('\\');
                 SB.Append(PContent[j]);
               }
             }
-            SB.Append(Table.JoinChar);
+            SB.Append(CSVTableAttribute.Separator);
             break;
           case FieldInfo Field:
             bool HasNotCustomizSerialFuncF = (SerializFuncs == null || !SerializFuncs.ContainsKey(Sorted[i].HeaderText));
@@ -102,11 +103,11 @@ namespace CSV {
             }
             else {
               for (int j = 0; j < FContent.Length; j++) {
-                if (FContent[j] == Table.JoinChar) SB.Append('\\');
+                if (FContent[j] == CSVTableAttribute.Separator) SB.Append('\\');
                 SB.Append(FContent[j]);
-              } 
+              }
             }
-            SB.Append(Table.JoinChar);
+            SB.Append(CSVTableAttribute.Separator);
             break;
         }
       }
@@ -200,6 +201,10 @@ namespace CSV {
       }
       yield break;
     }
+
+
+
+
     public static IEnumerable<T> FromCSV<T>(string Data, string Name = "default") where T : new() {
       var Attr = typeof(T).GetCustomAttributes<CSVTableAttribute>(false).Where(E => E.Name == Name).FirstOrDefault();
       if (Attr == null) throw new InvalidOperationException("No CSV Fig");
@@ -240,7 +245,7 @@ namespace CSV {
           if (RawItem.Length != 0) {
             CacheBackSlash.Append(RawItem);
             if (CacheBackSlash[CacheBackSlash.Length - 1] == '\\') {
-              CacheBackSlash[CacheBackSlash.Length - 1] = Table.JoinChar;
+              CacheBackSlash[CacheBackSlash.Length - 1] = Table.Separator;
               continue;
             }
           }
@@ -280,6 +285,40 @@ namespace CSV {
 
 
   }
+
+  public partial class CSVConvert {
+
+  }
+
+  //internal class CSVStringBuilder {
+  //  public CSVStringBuilder(CSVTableAttribute TableAttr) {
+  //    _TableAttr = TableAttr;
+  //    _StringBuilder = new StringBuilder();
+
+  //  }
+  //  private readonly StringBuilder _StringBuilder;
+  //  private readonly CSVTableAttribute _TableAttr;
+
+  //  public void AppendChar(char Char) {
+  //    if (Char == _TableAttr.Separator) {
+  //      _StringBuilder.Append('\\');
+  //    }
+  //    _StringBuilder.Append(Char);
+  //  }
+  //  public void NewLine() {
+  //    _StringBuilder.Append(_TableAttr.NewLine);
+  //  }
+  //  public void AppendLine(string Line) {
+  //    foreach (var Char in Line) {
+  //      AppendChar(Char);
+  //    }
+  //    NewLine();
+  //  }
+
+  //  public static implicit operator StringBuilder(CSVStringBuilder CSVB) => CSVB._StringBuilder;
+
+  //}
+
   public class CSVHeaderNotExistException : Exception { }
 
 
