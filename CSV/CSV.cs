@@ -68,7 +68,7 @@ namespace CSV {
       return Tb;
     }
 
-  public class Field {
+   public class Field {
     private StringBuilder _Chars;
     public int Count { get; private set; }
     public int Offset { get; private set; }
@@ -76,6 +76,9 @@ namespace CSV {
 
     public Field() { Offset = 0; Count = -1; _Chars = new StringBuilder(); }
     public Field(int Offset) : this() { this.Offset = Offset; }
+    internal Field(string ValueText) {
+      SetValue(ValueText);
+    }
 
     public Field NextChar(char Char1, out bool Eof) {
       Eof = false;
@@ -98,6 +101,20 @@ namespace CSV {
 
       return null;
     }
+    public void SetValue(string ValueString) {
+      _Chars = new StringBuilder(ValueString);
+      bool NeedEnclosed = false;
+      for (int i = _Chars.Length - 1; i >= 0; i--) {
+        if (_Chars[i] == '\"') {
+          _Chars.Insert(i, '\"');
+        }
+        else if (_Chars[i] == ',' || (_Chars[i] == '\r' && (i > 0 && _Chars[i - 1] == '\n'))) NeedEnclosed = true;
+      }
+      if (NeedEnclosed) {
+        _Chars.Insert(0, '\"');
+        _Chars.Append('\"');
+      }
+    }
     private string _Raw;
     public string Raw {
       get {
@@ -107,16 +124,16 @@ namespace CSV {
     }
     public override string ToString() => Raw.Trim('\"');
   }
-  public class Row {
+  public class Row : IEnumerable<Field> {
     protected readonly List<Field> _Fields;
-    public int Count { get => _Fields.Where(E => E.Count > 0).Sum(E => E.Count); }
-    public int Offset { get => _Fields[0].Offset; }
+    internal int TextCount { get => _Fields.Where(E => E.Count > 0).Sum(E => E.Count); }
+    internal int TextOffset { get => _Fields[0].Offset; }
     public Row() { _Fields = new List<Field>() { new Field(0) }; }
     public Row(int Offset) { _Fields = new List<Field>() { new Field(Offset) }; }
     public Row NextChar(char Char1) {
       var NextField = _Fields[_Fields.Count - 1].NextChar(Char1, out var Eof);
       if (Eof) {
-        return new Row(Offset + Count);
+        return new Row(TextOffset + TextCount);
       }
       else if (NextField != null) {
         _Fields.Add(NextField);
@@ -126,8 +143,17 @@ namespace CSV {
     public Field this[int ColumnIndex] {
       get => _Fields[ColumnIndex];
     }
+
+    public void AppendColumn(string ValueText) => _Fields.Add(new Field(ValueText));
+    public void RemoveColumn(int Index) => _Fields.RemoveAt(Index);
+    public void InsertColumn(int Index, string ValueText) => _Fields.Insert(Index, new Field(ValueText));
+
+
     public override string ToString() =>
       $"{string.Join(",", _Fields)}";
+
+    public IEnumerator<Field> GetEnumerator() => _Fields.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _Fields.GetEnumerator();
   }
   public class Header : Row {
     internal class MemberTypeValidor {
@@ -212,10 +238,10 @@ namespace CSV {
 
 
   }
-  public class Table {
-    public readonly Header Header;
+  public class Table : IEnumerable<Row> {
+    public Header Header { get; protected set; }
     private readonly List<Row> _Rows;
-    public readonly bool HasHeader;
+    public bool HasHeader { get; protected set; }
 
     public Table() { Header = null; _Rows = new List<Row>() { new Row() }; }
     public Table(bool HasHeader) {
@@ -241,12 +267,31 @@ namespace CSV {
       get => this._Rows[RowIndex][ColumnIndex];
     }
 
+    public void AddColumn(string HeaderText) {
+      if (HasHeader) {
+        Header.AppendColumn(HeaderText);
+      }
+      _Rows.ForEach(E => E.AppendColumn(""));
+    }
+    public void RemoveColumn(int Index) {
+      if (HasHeader) {
+        Header.RemoveColumn(Index);
+      }
+      _Rows.ForEach(E => E.RemoveColumn(Index));
+    }
+    public void InsertColumn(int Index, string HeaderText) {
+      if (HasHeader) {
+        Header.InsertColumn(Index, HeaderText);
+      }
+      _Rows.ForEach(E => E.InsertColumn(Index, ""));
+    }
+
     public override string ToString() =>
       $"{string.Join("\n\r", _Rows)}";
     public string ToString(bool WithHeader) =>
       WithHeader ? $"{Header}\n\r{ToString()}" : ToString();
 
+    public IEnumerator<Row> GetEnumerator() => _Rows.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _Rows.GetEnumerator();
   }
-  }
-
 }
