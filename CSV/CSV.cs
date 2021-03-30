@@ -16,7 +16,7 @@ namespace CSV {
     public string TableName { get; set; } = CSVTableAttribute.DefaultTableName;
     public CSVColumnAttribute(string Header) { HeaderText = Header; }
 
-    public int CompareTo([AllowNull] CSVColumnAttribute other) {
+    public int CompareTo(CSVColumnAttribute other) {
       return other == null ? 0 : Order.CompareTo(other.Order);
     }
     internal MemberInfo Member { get; set; }
@@ -409,7 +409,7 @@ namespace CSV {
         _ColAttrs = ModelType.GetFields(BindingFlags.Public | BindingFlags.Instance)
           .Cast<MemberInfo>()
           .Concat(ModelType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-          .Select(E => (E, E.GetCustomAttributes<CSVColumnAttribute>().FirstOrDefault(E => E.TableName == TargetTable)))
+          .Select(E => (E, E.GetCustomAttributes<CSVColumnAttribute>().FirstOrDefault(EE => EE.TableName == TargetTable)))
           .Where(E => E.Item2 != null && MemberTypeValidor.Validor(E.E))
           .Select(E => {
             E.Item2.Member = E.E;
