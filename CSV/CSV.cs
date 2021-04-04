@@ -4,6 +4,7 @@ namespace CSV {
   using System.Collections.Generic;
   using System.ComponentModel;
   using System.Diagnostics.CodeAnalysis;
+  using System.IO;
   using System.Linq;
   using System.Reflection;
   using System.Text;
@@ -34,7 +35,7 @@ namespace CSV {
 
   public partial class CSVConvert {
 
-   
+
     internal static object ConvertDynamic(string Value, Type T) {
       if (string.IsNullOrEmpty(Value)) return null;
       TypeConverter TCr = TypeDescriptor.GetConverter(T);
@@ -67,8 +68,8 @@ namespace CSV {
       }
       return Tb;
     }
-
-   public class Field {
+  }
+  public class Field {
     private StringBuilder _Chars;
     public int Count { get; private set; }
     public int Offset { get; private set; }
@@ -294,4 +295,5 @@ namespace CSV {
     public IEnumerator<Row> GetEnumerator() => _Rows.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => _Rows.GetEnumerator();
   }
+
 }
