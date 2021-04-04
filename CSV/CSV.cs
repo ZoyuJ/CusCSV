@@ -9,7 +9,7 @@ namespace CSV {
   using System.Reflection;
   using System.Text;
 
-#if WITH_GENERATOR
+#if WITHOUT_GENERATOR
   [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true, Inherited = false)]
   public class CSVColumnAttribute : Attribute, IComparable<CSVColumnAttribute> {
     public string HeaderText { get; set; }
@@ -45,7 +45,7 @@ namespace CSV {
         return Convert.ChangeType(Value, T);
     }
 
-    public static Table ToTable(string CSVText) {
+    public static Table ToCSV(string CSVText) {
       var Tb = new Table();
       int I = 0;
       while (CSVText.Length > I) {
@@ -54,11 +54,10 @@ namespace CSV {
       }
       return Tb;
     }
-
-    public static Table ToTable(Stream CSVText, Encoding Encoder) {
-      return ToTable(new StreamReader(CSVText, Encoder));
+    public static Table ToCSV(Stream CSVText, Encoding Encoder) {
+      return ToCSV(new StreamReader(CSVText, Encoder));
     }
-    public static Table ToTable(StreamReader CSVText) {
+    public static Table ToCSV(StreamReader CSVText) {
       var Tb = new Table();
       var Line = CSVText.ReadLine();
       while (Line != null) {
@@ -68,28 +67,34 @@ namespace CSV {
       }
       return Tb;
     }
+
+
+
   }
   public class Field {
     private StringBuilder _Chars;
-    public int Count { get; private set; }
-    public int Offset { get; private set; }
+    public int TextCount { get; private set; }
+    public int TextOffset { get; private set; }
     private bool Enclosed { get; set; } = true;
 
-    public Field() { Offset = 0; Count = -1; _Chars = new StringBuilder(); }
-    public Field(int Offset) : this() { this.Offset = Offset; }
+    public bool MustEnclosed { get; private set; } = false;
+
+    public Field() { TextOffset = 0; TextCount = -1; _Chars = new StringBuilder(); }
+    public Field(int Offset) : this() { this.TextOffset = Offset; }
     internal Field(string ValueText) {
-      SetValue(ValueText);
+      SetTextValue(ValueText);
     }
+
 
     public Field NextChar(char Char1, out bool Eof) {
       Eof = false;
-      Count += 1;
+      TextCount += 1;
       if (Char1 == '\"') {
         Enclosed = !Enclosed;
       }
       if (Enclosed) {
         if (Char1 == ',') {
-          return new Field(Offset + Count);
+          return new Field(TextOffset + TextCount);
         }
         else if (Char1 == '\r' && _Chars.Length > 0 && _Chars[_Chars.Length - 1] == '\n') {
           Eof = true;
@@ -102,18 +107,28 @@ namespace CSV {
 
       return null;
     }
-    public void SetValue(string ValueString) {
+    public void SetTextValue(string ValueString) {
       _Chars = new StringBuilder(ValueString);
-      bool NeedEnclosed = false;
+
       for (int i = _Chars.Length - 1; i >= 0; i--) {
         if (_Chars[i] == '\"') {
           _Chars.Insert(i, '\"');
         }
-        else if (_Chars[i] == ',' || (_Chars[i] == '\r' && (i > 0 && _Chars[i - 1] == '\n'))) NeedEnclosed = true;
+        else if (!MustEnclosed && (_Chars[i] == ',' || (_Chars[i] == '\r' && i > 0 && _Chars[i - 1] == '\n'))) MustEnclosed = true;
       }
-      if (NeedEnclosed) {
+      if (MustEnclosed) {
         _Chars.Insert(0, '\"');
         _Chars.Append('\"');
+      }
+    }
+    public void SetValue(object Value) {
+      switch (Value) {
+        case DateTime dt:
+          SetTextValue(dt.ToString());
+          break;
+        default:
+          SetTextValue(Value.ToString());
+          break;
       }
     }
     private string _Raw;
@@ -127,10 +142,13 @@ namespace CSV {
   }
   public class Row : IEnumerable<Field> {
     protected readonly List<Field> _Fields;
-    internal int TextCount { get => _Fields.Where(E => E.Count > 0).Sum(E => E.Count); }
-    internal int TextOffset { get => _Fields[0].Offset; }
+    internal int TextCount { get => _Fields.Where(E => E.TextCount > 0).Sum(E => E.TextCount); }
+    internal int TextOffset { get => _Fields[0].TextOffset; }
     public Row() { _Fields = new List<Field>() { new Field(0) }; }
     public Row(int Offset) { _Fields = new List<Field>() { new Field(Offset) }; }
+    public Row(IEnumerable<Field> Fields) {
+      _Fields = Fields.ToList();
+    }
     public Row NextChar(char Char1) {
       var NextField = _Fields[_Fields.Count - 1].NextChar(Char1, out var Eof);
       if (Eof) {
@@ -294,6 +312,11 @@ namespace CSV {
 
     public IEnumerator<Row> GetEnumerator() => _Rows.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => _Rows.GetEnumerator();
+  }
+
+  public class CSVTableSetting {
+    public string DateTimeFormate = "yyyy/MM/ddTHH:mm:ssZ";
+    public bool MustEnclosed = false;
   }
 
 }
