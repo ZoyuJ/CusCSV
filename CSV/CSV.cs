@@ -8,8 +8,7 @@ namespace CSV {
   using System.Reflection;
   using System.Text;
 
-  using static CSV.CSVKits;
-
+#if WITH_GENERATOR
   [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true, Inherited = false)]
   public class CSVColumnAttribute : Attribute, IComparable<CSVColumnAttribute> {
     public string HeaderText { get; set; }
@@ -17,7 +16,7 @@ namespace CSV {
     public string TableName { get; set; } = CSVTableAttribute.DefaultTableName;
     public CSVColumnAttribute(string Header) { HeaderText = Header; }
 
-    public int CompareTo([AllowNull] CSVColumnAttribute other) {
+    public int CompareTo(CSVColumnAttribute other) {
       return other == null ? 0 : Order.CompareTo(other.Order);
     }
     internal MemberInfo Member { get; set; }
@@ -30,17 +29,12 @@ namespace CSV {
     public string Name { get; set; } = DefaultTableName;
     public const char Separator = ',';
     public const string NewLine = "\r\n";
-  }
-  /*
-    RFC 4180 https://tools.ietf.org/html/rfc4180
-     xx1,yy1,zz1 \r\n xx2,yy2,zz2                         => [{xx1,yy1,zz1},{xx2,yy2,zz2}]
-     "xx1","yy1","zz1" \r\n "xx2","yy2","zz2"             => [{xx1,yy1,zz1},{xx2,yy2,zz2}]
-     "xx1","y \r\n , "y1","zz1" \r\n "xx2","yy2","zz2"    => [{xx1,y \r\n \, y1,zz1},{xx2,yy2,zz2}]
-     "x""x1","yy1","zz1" \r\n "xx2","yy2","zz2"           => [{x\"x1,yy1,zz1},{xx2,yy2,zz2}]
-  */
+  } 
+#endif
 
   public partial class CSVConvert {
 
+   
     internal static object ConvertDynamic(string Value, Type T) {
       if (string.IsNullOrEmpty(Value)) return null;
       TypeConverter TCr = TypeDescriptor.GetConverter(T);
@@ -50,28 +44,119 @@ namespace CSV {
         return Convert.ChangeType(Value, T);
     }
 
+    public static Table ToTable(string CSVText) {
+      var Tb = new Table();
+      int I = 0;
+      while (CSVText.Length > I) {
+        Tb.NextChar(CSVText[I]);
+        I++;
+      }
+      return Tb;
+    }
 
-    public static string ToCSV(object Instance, string Table = CSVTableAttribute.DefaultTableName) {
+    public static Table ToTable(Stream CSVText, Encoding Encoder) {
+      return ToTable(new StreamReader(CSVText, Encoder));
+    }
+    public static Table ToTable(StreamReader CSVText) {
+      var Tb = new Table();
+      var Line = CSVText.ReadLine();
+      while (Line != null) {
+        for (int i = 0; i < Line.Length; i++) {
+          Tb.NextChar(Line[i]);
+        }
+      }
+      return Tb;
+    }
+
+   public class Field {
+    private StringBuilder _Chars;
+    public int Count { get; private set; }
+    public int Offset { get; private set; }
+    private bool Enclosed { get; set; } = true;
+
+    public Field() { Offset = 0; Count = -1; _Chars = new StringBuilder(); }
+    public Field(int Offset) : this() { this.Offset = Offset; }
+    internal Field(string ValueText) {
+      SetValue(ValueText);
+    }
+
+    public Field NextChar(char Char1, out bool Eof) {
+      Eof = false;
+      Count += 1;
+      if (Char1 == '\"') {
+        Enclosed = !Enclosed;
+      }
+      if (Enclosed) {
+        if (Char1 == ',') {
+          return new Field(Offset + Count);
+        }
+        else if (Char1 == '\r' && _Chars.Length > 0 && _Chars[_Chars.Length - 1] == '\n') {
+          Eof = true;
+          _Chars.Remove(_Chars.Length - 1, 1);
+          return null;
+        }
+      }
+
+      if (!(Char1 == '\"' && (_Chars.Length > 0 && _Chars[_Chars.Length - 1] == '\"'))) _Chars.Append(Char1);
+
       return null;
     }
-    public static object FromCSV(string CSVText, string Table = CSVTableAttribute.DefaultTableName) {
-
-      return new Table();
+    public void SetValue(string ValueString) {
+      _Chars = new StringBuilder(ValueString);
+      bool NeedEnclosed = false;
+      for (int i = _Chars.Length - 1; i >= 0; i--) {
+        if (_Chars[i] == '\"') {
+          _Chars.Insert(i, '\"');
+        }
+        else if (_Chars[i] == ',' || (_Chars[i] == '\r' && (i > 0 && _Chars[i - 1] == '\n'))) NeedEnclosed = true;
+      }
+      if (NeedEnclosed) {
+        _Chars.Insert(0, '\"');
+        _Chars.Append('\"');
+      }
     }
-    public static IEnumerable<object> FromCSV(string CSVText, Type Model, string Table = CSVTableAttribute.DefaultTableName) {
-
-      return Enumerable.Empty<object>();
+    private string _Raw;
+    public string Raw {
+      get {
+        if (_Raw == null) _Raw = _Chars.ToString();
+        return _Raw;
+      }
     }
-    public static IEnumerable<T> FromCSV<T>(string CSVText, string Table = CSVTableAttribute.DefaultTableName) {
-      return FromCSV(CSVText, typeof(T), Table).Cast<T>();
-    }
-
-
-
+    public override string ToString() => Raw.Trim('\"');
   }
+  public class Row : IEnumerable<Field> {
+    protected readonly List<Field> _Fields;
+    internal int TextCount { get => _Fields.Where(E => E.Count > 0).Sum(E => E.Count); }
+    internal int TextOffset { get => _Fields[0].Offset; }
+    public Row() { _Fields = new List<Field>() { new Field(0) }; }
+    public Row(int Offset) { _Fields = new List<Field>() { new Field(Offset) }; }
+    public Row NextChar(char Char1) {
+      var NextField = _Fields[_Fields.Count - 1].NextChar(Char1, out var Eof);
+      if (Eof) {
+        return new Row(TextOffset + TextCount);
+      }
+      else if (NextField != null) {
+        _Fields.Add(NextField);
+      }
+      return null;
+    }
+    public Field this[int ColumnIndex] {
+      get => _Fields[ColumnIndex];
+    }
 
-  internal static class CSVKits {
-    internal static class MemberTypeValidor {
+    public void AppendColumn(string ValueText) => _Fields.Add(new Field(ValueText));
+    public void RemoveColumn(int Index) => _Fields.RemoveAt(Index);
+    public void InsertColumn(int Index, string ValueText) => _Fields.Insert(Index, new Field(ValueText));
+
+
+    public override string ToString() =>
+      $"{string.Join(",", _Fields)}";
+
+    public IEnumerator<Field> GetEnumerator() => _Fields.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _Fields.GetEnumerator();
+  }
+  public class Header : Row {
+    internal class MemberTypeValidor {
       private static readonly HashSet<Type> BasicTypes = new HashSet<Type>(new Type[] {
           typeof(DateTime),typeof(string),typeof(bool),
           typeof(sbyte),typeof(short),typeof(int),typeof(long),
@@ -113,121 +198,50 @@ namespace CSV {
       public static bool IsBasicType(Type Type) => Type.IsEnum || BasicTypes.Contains(Type);
 
     }
-    internal static IOrderedEnumerable<CSVColumnAttribute> AllValidMember(this Type This, string Table)
-      => This.GetFields(BindingFlags.Public | BindingFlags.Instance)
-           .Cast<MemberInfo>()
-           .Concat(This.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-           .Select(E => (E, E.GetCustomAttributes<CSVColumnAttribute>().FirstOrDefault(E => E.TableName == Table)))
-           .Where(E => E.Item2 != null && MemberTypeValidor.Validor(E.E))
-           .Select(E => {
-             E.Item2.Member = E.E;
-             if (string.IsNullOrEmpty(E.Item2.HeaderText)) E.Item2.HeaderText = E.E.Name;
-             return E.Item2;
-           })
-           .OrderBy(E => E.Order);
+    //internal List<CSVColumnAttribute> _ColAttrs;
+    //public void MapToModel(Type ModelType, string TargetTable = CSVTableAttribute.DefaultTableName) {
+    //  if (MemberTypeValidor.IsBasicType(ModelType)) {
+    //    //no header
+    //  }
+    //  else if (ModelType.IsArray || typeof(IList).IsAssignableFrom(ModelType)) {
+    //    //no header
+    //  }
+    //  else if (typeof(IDictionary).IsAssignableFrom(ModelType)) {
+    //    //no key header
+    //    MapToModel(ModelType.GetGenericArguments()[1]);
+    //  }
+    //  else {
+    //    _ColAttrs = ModelType.GetFields(BindingFlags.Public | BindingFlags.Instance)
+    //      .Cast<MemberInfo>()
+    //      .Concat(ModelType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+    //      .Select(E => (E, E.GetCustomAttributes<CSVColumnAttribute>().FirstOrDefault(EE => EE.TableName == TargetTable)))
+    //      .Where(E => E.Item2 != null && MemberTypeValidor.Validor(E.E))
+    //      .Select(E => {
+    //        E.Item2.Member = E.E;
+    //        if (string.IsNullOrEmpty(E.Item2.HeaderText)) E.Item2.HeaderText = E.E.Name;
+    //        return E.Item2;
+    //      })
+    //      .OrderBy(E => E.Order)
+    //      .ToList();
 
-  }
+    //    if (_Fields != null && _Fields.Count > 0) {
+    //      for (int i = _Fields[0].Raw == "" ? 1 : 0, j = 0; i < _Fields.Count; i++) {
+    //        if (_Fields[i].Raw == "") {
+    //          _ColAttrs.Insert(j, _ColAttrs[j - 1]);
+    //        }
+    //      }
+    //    }
+    //  }
 
-  class Field {
-    private readonly StringBuilder _Chars;
-    public int Count { get; private set; }
-    public int Offset { get; private set; }
-    private bool Enclosed { get; set; } = true;
-
-    public Field() { Offset = 0; Count = -1; _Chars = new StringBuilder(); }
-    public Field(int Offset) : this() { this.Offset = Offset; }
-
-    public Field NextChar(char Char1, out bool Eof) {
-      Eof = false;
-      Count += 1;
-      if (Char1 == '\"') {
-        Enclosed = !Enclosed;
-      }
-      if (Enclosed) {
-        if (Char1 == ',') {
-          return new Field(Offset + Count);
-        }
-        else if (Char1 == '\r' && _Chars[_Chars.Length - 1] == '\n') {
-          Eof = true;
-          _Chars.Remove(_Chars.Length - 1, 1);
-          return null;
-        }
-      }
-      else {
-        if (_Chars.Length == 0 || _Chars[_Chars.Length - 1] != '\"') _Chars.Append(Char1);
-      }
-      return null;
-    }
-    private string _Raw;
-    public string Raw {
-      get {
-        if (_Raw == null) _Raw = _Chars.ToString();
-        return _Raw;
-      }
-    }
-    public override string ToString() => Raw;
-  }
-  class Row {
-    protected readonly List<Field> _Fields;
-    public int Count { get => _Fields.Where(E => E.Count > 0).Sum(E => E.Count); }
-    public int Offset { get => _Fields[0].Offset; }
-    public Row() { }
-    public Row(int Offset) { _Fields = new List<Field>() { new Field(Offset) }; }
-    public Row NextChar(char Char1) {
-      var NextField = _Fields[_Fields.Count - 1].NextChar(Char1, out var Eof);
-      if (Eof) {
-        return new Row(Offset + Count);
-      }
-      else if (NextField != null) {
-        _Fields.Add(NextField);
-      }
-      return null;
-    }
-    public Field this[int ColumnIndex] {
-      get => _Fields[ColumnIndex];
-    }
-
-    public object ToObject(Type Model) {
-
-      return null;
-    }
-
-  }
-  class Header : Row {
-
-    internal List<CSVColumnAttribute> _ColAttrs;
-    public void MapToModel(Type ModelType, string TargetTable = CSVTableAttribute.DefaultTableName) {
-      if (MemberTypeValidor.IsBasicType(ModelType)) {
-        //no header
-      }
-      else if (ModelType.IsArray || typeof(IList).IsAssignableFrom(ModelType)) {
-        //no header
-      }
-      else if (typeof(IDictionary).IsAssignableFrom(ModelType)) {
-        //no key header
-        MapToModel(ModelType.GetGenericArguments()[1]);
-      }
-      else {
-        _ColAttrs = ModelType.AllValidMember(TargetTable).ToList();
-
-        if (_Fields != null && _Fields.Count > 0) {
-          for (int i = _Fields[0].Raw == "" ? 1 : 0, j = 0; i < _Fields.Count; i++) {
-            if (_Fields[i].Raw == "") {
-              _ColAttrs.Insert(j, _ColAttrs[j - 1]);
-            }
-          }
-        }
-      }
-
-    }
+    //}
 
 
 
   }
-  class Table {
-    public readonly Header Header;
+  public class Table : IEnumerable<Row> {
+    public Header Header { get; protected set; }
     private readonly List<Row> _Rows;
-    public readonly bool HasHeader;
+    public bool HasHeader { get; protected set; }
 
     public Table() { Header = null; _Rows = new List<Row>() { new Row() }; }
     public Table(bool HasHeader) {
@@ -253,13 +267,31 @@ namespace CSV {
       get => this._Rows[RowIndex][ColumnIndex];
     }
 
+    public void AddColumn(string HeaderText) {
+      if (HasHeader) {
+        Header.AppendColumn(HeaderText);
+      }
+      _Rows.ForEach(E => E.AppendColumn(""));
+    }
+    public void RemoveColumn(int Index) {
+      if (HasHeader) {
+        Header.RemoveColumn(Index);
+      }
+      _Rows.ForEach(E => E.RemoveColumn(Index));
+    }
+    public void InsertColumn(int Index, string HeaderText) {
+      if (HasHeader) {
+        Header.InsertColumn(Index, HeaderText);
+      }
+      _Rows.ForEach(E => E.InsertColumn(Index, ""));
+    }
 
+    public override string ToString() =>
+      $"{string.Join("\n\r", _Rows)}";
+    public string ToString(bool WithHeader) =>
+      WithHeader ? $"{Header}\n\r{ToString()}" : ToString();
 
+    public IEnumerator<Row> GetEnumerator() => _Rows.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _Rows.GetEnumerator();
   }
-
-
-  public class CSVHeaderNotExistException : Exception { }
-
-
-
 }
