@@ -1,4 +1,3 @@
-import { InsertChar } from "../node_modules/katkits.ts/lib/Kits"
 
 class Table {
   public readonly Header: Header | null = null;
