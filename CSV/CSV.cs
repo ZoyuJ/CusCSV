@@ -30,7 +30,7 @@ namespace CSV {
     public string Name { get; set; } = DefaultTableName;
     public const char Separator = ',';
     public const string NewLine = "\r\n";
-  } 
+  }
 #endif
 
   public partial class CSVConvert {
@@ -73,16 +73,14 @@ namespace CSV {
   }
   public class Field {
     private StringBuilder _Chars;
-    public int TextCount { get; private set; }
-    public int TextOffset { get; private set; }
-    private bool Enclosed { get; set; } = true;
-
-    public bool MustEnclosed { get; private set; } = false;
+    internal int TextCount { get; set; }
+    internal int TextOffset { get; set; }
+    public bool Enclosed { get; private set; } = true;
 
     public Field() { TextOffset = 0; TextCount = -1; _Chars = new StringBuilder(); }
     public Field(int Offset) : this() { this.TextOffset = Offset; }
-    internal Field(string ValueText) {
-      SetTextValue(ValueText);
+    internal Field(string RawText) {
+      this.RawText = RawText;
     }
 
 
@@ -107,38 +105,33 @@ namespace CSV {
 
       return null;
     }
-    public void SetTextValue(string ValueString) {
-      _Chars = new StringBuilder(ValueString);
-
-      for (int i = _Chars.Length - 1; i >= 0; i--) {
-        if (_Chars[i] == '\"') {
-          _Chars.Insert(i, '\"');
-        }
-        else if (!MustEnclosed && (_Chars[i] == ',' || (_Chars[i] == '\r' && i > 0 && _Chars[i - 1] == '\n'))) MustEnclosed = true;
-      }
-      if (MustEnclosed) {
-        _Chars.Insert(0, '\"');
-        _Chars.Append('\"');
-      }
-    }
     public void SetValue(object Value) {
       switch (Value) {
         case DateTime dt:
-          SetTextValue(dt.ToString());
+          RawText = (dt.ToString());
           break;
         default:
-          SetTextValue(Value.ToString());
+          RawText = (Value.ToString());
           break;
       }
     }
-    private string _Raw;
-    public string Raw {
+    public string RawText {
       get {
-        if (_Raw == null) _Raw = _Chars.ToString();
-        return _Raw;
+        for (int i = _Chars.Length - 1; i >= 0; i--) {
+          if (_Chars[i] == '\"') {
+            _Chars.Insert(i, '\"');
+          }
+          else if (!Enclosed && (_Chars[i] == ',' || (_Chars[i] == '\r' && i > 0 && _Chars[i - 1] == '\n'))) Enclosed = true;
+        }
+        if (Enclosed) {
+          _Chars.Insert(0, '\"');
+          _Chars.Append('\"');
+        }
+        return _Chars.ToString();
       }
+      set => _Chars = new StringBuilder(value);
     }
-    public override string ToString() => Raw.Trim('\"');
+    public override string ToString() => RawText;
   }
   public class Row : IEnumerable<Field> {
     protected readonly List<Field> _Fields;

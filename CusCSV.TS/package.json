@@ -5,11 +5,14 @@
   "main": "./lib/Index.js",
   "types": "./lib/Index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
   "author": "ZoyuJ",
   "license": "MIT",
   "devDependencies": {
     "typescript": "^4.1.3"
+  },
+  "dependencies": {
+    "katkits.ts": "3.0.3"
   }
 }
