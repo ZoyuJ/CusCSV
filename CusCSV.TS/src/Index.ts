@@ -1,5 +1,5 @@
 
-class Table {
+export class Table {
   public readonly Header: Header | null = null;
   public readonly Rows: Row[] = [];
 
@@ -30,7 +30,7 @@ class Table {
   }
 
 }
-class Row {
+export class Row {
   public readonly Fields: Field[] | null = null;
 
   constructor() { }
@@ -56,7 +56,7 @@ class Row {
     }
   }
 }
-class Field {
+export class Field {
   private _Chars: string[];
   private RawText: string | null = null;
   private Text: string | null = null;
@@ -123,7 +123,7 @@ class Field {
 
 
 }
-class Header extends Row {
+export class Header extends Row {
 
 }
 

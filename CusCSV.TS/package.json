@@ -1,6 +1,6 @@
 {
-  "name": "cuscsv.ts",
-  "version": "1.0.0",
+  "name": "cuscsv",
+  "version": "0.0.1",
   "description": "",
   "main": "./lib/Index.js",
   "types": "./lib/Index.d.ts",
@@ -13,6 +13,6 @@
     "typescript": "^4.1.3"
   },
   "dependencies": {
-    "katkits.ts": "3.0.3"
+    "katkits": ">=1.0.1"
   }
 }
