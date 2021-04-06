@@ -10,7 +10,7 @@
   using System.Diagnostics;
   using System.Linq;
   using System.Text;
-
+  
   //  [Generator]
   //  public class Gen : ISourceGenerator {
   //    public void Initialize(GeneratorInitializationContext context) {
