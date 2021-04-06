@@ -9,6 +9,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Try", "Try\Try.csproj", "{8
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CusCSV.TS", "CusCSV.TS\CusCSV.TS.njsproj", "{3736949F-9F03-4A48-A6D4-E4C76CEF8A9E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSVHelperGenerator", "CSVHelperGenerator\CSVHelperGenerator.csproj", "{8502F586-0555-4ECE-94E5-632A74BF9886}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSVHelperReflection", "CSVHelperReflection\CSVHelperReflection.csproj", "{805BBD54-FA49-4627-925E-A53CB7ED2660}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{3736949F-9F03-4A48-A6D4-E4C76CEF8A9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3736949F-9F03-4A48-A6D4-E4C76CEF8A9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3736949F-9F03-4A48-A6D4-E4C76CEF8A9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8502F586-0555-4ECE-94E5-632A74BF9886}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8502F586-0555-4ECE-94E5-632A74BF9886}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8502F586-0555-4ECE-94E5-632A74BF9886}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8502F586-0555-4ECE-94E5-632A74BF9886}.Release|Any CPU.Build.0 = Release|Any CPU
+		{805BBD54-FA49-4627-925E-A53CB7ED2660}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{805BBD54-FA49-4627-925E-A53CB7ED2660}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{805BBD54-FA49-4627-925E-A53CB7ED2660}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{805BBD54-FA49-4627-925E-A53CB7ED2660}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
