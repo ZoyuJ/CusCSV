@@ -1,3 +1,4 @@
+import { Func1 } from "katkits/lib/Event";
 
 export class Table {
   public readonly Header: Header | null = null;
@@ -32,13 +33,19 @@ export class Table {
 }
 export class Row {
   public readonly Fields: Field[] | null = null;
-
-  constructor() { }
+  public Table: Table;
+  constructor(Table: Table) {
+    this.Table = Table;
+  }
 
   public NextChar(Char1: string): Row {
     const Next = this.Fields[this.Fields.length - 1].NextChar(Char1);
     if (Next.Eof) {
-      return new Row();
+      let i = 0;
+      this.Fields.forEach(E => {
+        E.ColIndex = i++;
+      });
+      return new Row(this.Table);
     }
     else if (Next.Field != null) {
       this.Fields.push(Next.Field);
@@ -50,6 +57,14 @@ export class Row {
     return `${this.Fields.join(",")}`;
   }
 
+  public ToObject(): any[] {
+    const Arr = [];
+    this.Fields.forEach(E => Arr.push(E.ToValue()));
+    return Arr;
+  }
+
+
+
   *[Symbol.iterator]() {
     for (let Field of this.Fields) {
       yield Field;
@@ -57,10 +72,18 @@ export class Row {
   }
 }
 export class Field {
-  private _Chars: string[];
-  private RawText: string | null = null;
-  private Text: string | null = null;
-  private Enclosed: boolean;
+  protected _Chars: string[];
+  public RawText: string | null = null;
+  public Text: string | null = null;
+  protected Enclosed: boolean;
+  public Table: Table;
+  public ColIndex: number;
+  public Header(): Field {
+    if (this.Table.HasHeader && this.Table.Rows.length > 0) {
+      return this.Table.Header.PeekHeader(this.ColIndex);
+    }
+    return null;
+  }
 
   public IsEnclosed() { return this.Enclosed; }
   public ToString() { return this.RawText; }
@@ -70,7 +93,7 @@ export class Field {
     if (Char1 === "\"") this.Enclosed = !this.Enclosed;
     if (this.Enclosed) {
       if (Char1 === ",") {
-        Eof.Field = new Field();
+        Eof.Field = new Field(this.Table);
         return Eof;
       }
       else if (Char1 === "\r" && this._Chars.length > 0 && this._Chars[this._Chars.length - 1] === "\n") {
@@ -79,18 +102,14 @@ export class Field {
         return Eof;
       }
     }
-    if (!(Char1 === "\"" && (this._Chars.length > 0 && this._Chars[this._Chars.length - 1] === "\""))) this._Chars.push(Char1);
+    if (!(Char1 === "\"" && (this._Chars.length > 0 && this._Chars[this._Chars.length - 1] === "\"")))
+      this._Chars.push(Char1);
     return null;
   }
 
-  private DealObject(Value: any): string {
-    if (Value instanceof Date) {
-      return (Value as Date).toISOString();
-    }
-    return Value.ToString();
-  }
+
   public SetValue(Value: any) {
-    this.SetText(this.DealObject(Value));
+    this.SetText(this.Table.Header.PeekConverter(this.ColIndex).To(Value));
   }
   public SetText(Text: string) {
     this.Text = Text;
@@ -109,25 +128,105 @@ export class Field {
     this.RawText = this._Chars.join("");
   }
 
-  constructor() { }
-  public static FromCSVText(Text: string): Field {
-    const F = new Field();
+  public ToValue(): any {
+    return this.Table.Header.PeekConverter(this.ColIndex).From(this.Text);
+  }
+
+  constructor(Table: Table) {
+    this.Table = Table;
+  }
+  public static FromCSVText(Row: Row, Text: string): Field {
+    const F = new Field(Row.Table);
     F.SetText(Text);
     return F;
   }
-  public static FormObject(Value: any): Field {
-    const F = new Field();
+  public static FormObject(Row: Row, Value: any): Field {
+    const F = new Field(Row.Table);
     F.SetValue(Value);
     return F;
   }
 
 
 }
-export class Header extends Row {
 
+export interface Converter {
+  To: Func1<any, string>;
+  From: Func1<any, string>;
+}
+export class Header extends Row {
+  protected Converters: Converter[];
+
+  public static FullbackConverter(): Converter {
+    return {
+      To: Header.FullbackToTextConverter,
+      From: Header.FullbackFromTextConverter,
+    }
+  }
+  private static FullbackToTextConverter(Value: any): string {
+    if (Value instanceof Date) {
+      return (Value as Date).toISOString();
+    }
+    return Value.ToString();
+  }
+  private static FullbackFromTextConverter(Text: string): string { return Text; }
+
+  public PeekHeader(ColIndex: number) {
+    if (this.Fields.length > 0 && ColIndex < this.Fields.length) {
+      return this.Fields[ColIndex];
+    }
+    return null;
+  }
+  public PeekConverter(ColIndex: number): Converter {
+    return this.Converters[ColIndex];
+  }
+
+
+  public NextChar(Char1: string) {
+    const Next = this.Fields[this.Fields.length - 1].NextChar(Char1);
+    if (Next.Eof) {
+      this.Converters = []
+      let i = 0;
+      this.Fields.forEach(E => {
+        E.ColIndex = i++;
+        this.Converters.push(Header.FullbackConverter());
+      });
+      return new Row(this.Table);
+    }
+    else if (Next.Field != null) {
+      if (Next.Field.Text === '' && this.Fields.length > 0) {
+        Next.Field.Text = this.Fields[this.Fields.length].Text;
+      }
+      this.Fields.push(Next.Field);
+    }
+    return null;
+  }
+
+  constructor(Table: Table, FirstRow: Row) {
+    super(Table);
+  }
+
+
+}
+
+export default class CSV {
+  public static FromCSV(CSVText: string): Table {
+    const Tb = new Table();
+    for (const C of CSVText) {
+      Tb.NextChar(C);
+    }
+    return Tb;
+  }
+
+  public static ToCSV(Table: Table): string {
+    return Table.ToStringWithHeader();
+  }
+
+  public static readonly MIMEType: string = "text/csv";
 }
 
 interface Eof {
   Eof: boolean;
   Field?: Field | null;
+  Row?: Row | null;
+  LastIndex?: number;
 }
