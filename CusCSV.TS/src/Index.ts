@@ -24,6 +24,8 @@ export class Table {
     return `${this.Header.ToString()}\n\r${this.ToString()}`;
   }
 
+
+
   *[Symbol.iterator]() {
     for (let Row of this.Rows) {
       yield Row;

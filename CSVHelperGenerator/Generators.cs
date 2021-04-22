@@ -6,11 +6,10 @@
 
   using System;
   using System.Collections.Generic;
-  using System.Collections.Immutable;
   using System.Diagnostics;
   using System.Linq;
   using System.Text;
-  
+
   //  [Generator]
   //  public class Gen : ISourceGenerator {
   //    public void Initialize(GeneratorInitializationContext context) {
@@ -229,10 +228,27 @@ $@"
     class CSVColumnSyntax {
       public string HeaderName;
       public string ModelFullName;
+      public string ConverterToCSVMethod;
+      public string ConverterFromCSVMethod;
       public string FieldPath;
       public int Order;
       public bool IsStruct;
       public string ValueType;
+
+      public CSVColumnSyntax() { }
+      public CSVColumnSyntax(string TableName, bool IsStruct, string ModelFullName, AttributeData Attr, ISymbol Member) {
+        this.IsStruct = IsStruct;
+        this.ModelFullName = ModelFullName;
+        if (Member is IFieldSymbol FMember) {
+          HeaderName = (Attr.NamedArguments.FirstOrDefault(E => E.Key == "HeaderText").Value.Value as string) ?? FMember.Name;
+          Order = (int)(Attr.NamedArguments.FirstOrDefault(E => E.Key == "Order").Value.Value);
+          ConverterToCSVMethod = (Attr.NamedArguments.FirstOrDefault(E => E.Key == "HeaderText").Value.Value as string);
+        }
+        else if (Member is IPropertySymbol PMember) {
+
+        }
+      }
+
       public string ToDefineString() =>
 $@"
 
@@ -257,12 +273,13 @@ internal static void ToCSVModel({(IsStruct ? "ref " : "")}{ModelFullName} This){
         CSharpParseOptions Options = (context.Compilation as CSharpCompilation).SyntaxTrees[0].Options as CSharpParseOptions;
         var AttributeTree = CSharpSyntaxTree.ParseText(SourceText.From(ModelAttrCode, new UTF8Encoding(false)), Options);
         var Compilation = context.Compilation.AddSyntaxTrees(AttributeTree);
-        var Symbol = Compilation.GetTypeByMetadataName("CSV.CSVTableAttribute");
+        var TableAttributeSymbol = Compilation.GetTypeByMetadataName("CSV.CSVTableAttribute");
+
         foreach (var CS in Receiver.Models) {
           SemanticModel Model = Compilation.GetSemanticModel(CS.SyntaxTree);
           if (CS is ClassDeclarationSyntax CDS) {
             if (Model.GetDeclaredSymbol(CDS) is ITypeSymbol TSymbol) {
-              var Attrs = TSymbol.GetAttributes().Where(E => E.AttributeClass.Equals(Symbol, SymbolEqualityComparer.Default));
+              var Attrs = TSymbol.GetAttributes().Where(E => E.AttributeClass.Equals(TableAttributeSymbol, SymbolEqualityComparer.Default));
               foreach (var Attr in Attrs) {
                 var TableName = Attr.NamedArguments.FirstOrDefault(E => E.Key == "Name").Value.Value?.ToString() ?? "default";
                 //CDS.Members.Where(E => E.AttributeLists.Count > 0).
@@ -276,6 +293,18 @@ internal static void ToCSVModel({(IsStruct ? "ref " : "")}{ModelFullName} This){
       }
 
     }
+
+    private CSVTableSyntax OneTable(string TableName, SemanticModel Model, ITypeSymbol TSymbol) {
+      var Table = new CSVTableSyntax();
+      var Cols = TSymbol.GetMembers()
+        .Where(E => !E.IsStatic && (E.Kind == SymbolKind.Field || E.Kind == SymbolKind.Field))
+        .Select(E => (E, E.GetAttributes().FirstOrDefault(EE => EE.AttributeClass.Name == "CSV.CSVColumnAttribute" && (EE.NamedArguments.FirstOrDefault(EEE => EEE.Key == "TableName").Value.Value as string == TableName))))
+        .Where(E => E.Item2 != null)
+        .Select(E => new CSVColumnSyntax());
+
+      return Table;
+    }
+
   }
 
   [Generator]
