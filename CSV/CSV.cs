@@ -9,7 +9,8 @@ namespace CSV {
   using System.Reflection;
   using System.Text;
 
-#if WITHOUT_GENERATOR
+
+
   [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true, Inherited = false)]
   public class CSVColumnAttribute : Attribute, IComparable<CSVColumnAttribute> {
     public string HeaderText { get; set; }
@@ -31,7 +32,8 @@ namespace CSV {
     public const char Separator = ',';
     public const string NewLine = "\r\n";
   }
-#endif
+
+
 
   public partial class CSVConvert {
 
