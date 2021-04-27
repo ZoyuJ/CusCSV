@@ -1,8 +1,7 @@
 class Table {
-  public readonly Header: Header | null = null;
-  public readonly Rows: Row[] = [];
-
-  public readonly HasHeader: boolean = true;
+  public Header: Header | null = null;
+  public Rows: Row[] = [];
+  public HasHeader: boolean = false;
 
   public NextChar(Char1: string) {
     if (this.HasHeader && this.Rows?.length === 0) {
@@ -22,7 +21,18 @@ class Table {
     return `${this.Header.ToString()}\n\r${this.ToString()}`;
   }
 
-
+  public ApplyHeader(HeaderText: string[]) {
+    if (this.Header == null) {
+      this.HasHeader = true;
+      this.Header = new Header(this);
+    }
+    this.Header.AddContents(HeaderText);
+  }
+  public AddRow(DataRow: any[]) {
+    const _Row = new Row(this);
+    _Row.AddContents(DataRow);
+    this.Rows.push(_Row);
+  }
 
   *[Symbol.iterator]() {
     for (let Row of this.Rows) {
@@ -63,7 +73,16 @@ class Row {
     return Arr;
   }
 
-
+  public AddContents(Vals: any[]) {
+    Vals.forEach(E => {
+      this.AddContent(E);
+    });
+  }
+  public AddContent(Val: any) {
+    const Fd = new Field(this.Table);
+    Fd.SetValue(Val);
+    this.Fields.push(Fd);
+  }
 
   *[Symbol.iterator]() {
     for (let Field of this.Fields) {
@@ -180,7 +199,17 @@ export class Header extends Row {
     return this.Converters[ColIndex];
   }
 
-
+   public AddContents(Text: string[]) {
+    Text.forEach(E => {
+      this.AddContent(E);
+    });
+  }
+  public AddContent(Text: string) {
+      const Fd = new Field(this.Table);
+      this.Converters.push(Header.FullbackConverter());
+      Fd.SetValue(Text);
+      this.Fields.push(Fd);
+  }
   public NextChar(Char1: string) {
     const Next = this.Fields[this.Fields.length - 1].NextChar(Char1);
     if (Next.Eof) {
