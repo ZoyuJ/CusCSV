@@ -1,6 +1,4 @@
-import { Func1 } from "katkits/lib/Event";
-
-export class Table {
+class Table {
   public readonly Header: Header | null = null;
   public readonly Rows: Row[] = [];
 
@@ -33,7 +31,7 @@ export class Table {
   }
 
 }
-export class Row {
+class Row {
   public readonly Fields: Field[] | null = null;
   public Table: Table;
   constructor(Table: Table) {
@@ -73,7 +71,7 @@ export class Row {
     }
   }
 }
-export class Field {
+ class Field {
   protected _Chars: string[];
   public RawText: string | null = null;
   public Text: string | null = null;
@@ -151,9 +149,9 @@ export class Field {
 
 }
 
-export interface Converter {
-  To: Func1<any, string>;
-  From: Func1<any, string>;
+interface Converter {
+  To(any): string;
+  From(string): any;
 }
 export class Header extends Row {
   protected Converters: Converter[];
@@ -210,7 +208,7 @@ export class Header extends Row {
 
 }
 
-export default class CSV {
+class CSV {
   public static FromCSV(CSVText: string): Table {
     const Tb = new Table();
     for (const C of CSVText) {
