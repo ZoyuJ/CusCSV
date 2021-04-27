@@ -288,13 +288,7 @@ internal static void ToCSVModel({(IsStruct ? "ref " : "")}{ModelFullName} This){
     }
 
     public void Execute(GeneratorExecutionContext context) {
-      //context.AddSource("CSVGeneratedAttrs", SourceText.From(Define, new UTF8Encoding(false)));
-
       if (context.SyntaxReceiver is CSVAttrReveiver Receiver) {
-        //CSharpParseOptions Options = (context.Compilation as CSharpCompilation).SyntaxTrees[0].Options as CSharpParseOptions;
-        //var AttributeTree = CSharpSyntaxTree.ParseText(SourceText.From(ModelAttrCode, new UTF8Encoding(false)), Options);
-        //var Compilation = context.Compilation.AddSyntaxTrees(AttributeTree);
-
         foreach (var CS in Receiver.Models) {
           SemanticModel Model = context.Compilation.GetSemanticModel(CS.SyntaxTree);
           if (CS is ClassDeclarationSyntax CDS) {
