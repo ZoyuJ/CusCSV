@@ -1,38 +1,70 @@
 class Table {
-  public Header: Header | null = null;
-  public Rows: Row[] = [];
-  public HasHeader: boolean = false;
+  public Header: Header;
+  public Rows: Row[];
+  public HasHeader() { return this.Header?.IsContent ?? false; }
 
+  constructor(HeaderRow?: Header, Data?: Row[]) {
+    this.Header = HeaderRow;
+    this.Header.Table = this;
+    this.Rows = Data ?? [];
+  }
+
+  /**
+   * 逐字符的解析完整CSV内容
+   * @param Char1
+   */
   public NextChar(Char1: string) {
-    if (this.HasHeader && this.Rows?.length === 0) {
+    if (this.Rows?.length === 0) {
       const Next = this.Header.NextChar(Char1);
       if (Next !== null) this.Rows.push(Next);
     }
     else {
       const Next = this.Rows[this.Rows.length - 1].NextChar(Char1);
-      if (Next !== null) this.Rows.push(Next);
+      if (Next !== null) {
+        this.Rows.push(Next);
+      }
     }
   }
+  public NextCharSkipHeader(Chat1: string) {
 
+  }
+  public ReplaceChar(Char1: string) {
+    const Next = this.Header.ReplaceChar(Char1);
+  }
+
+
+  /**转换为CSV */
   public ToString() {
-    return `${this.Rows.join("\n\r")}`;
+    return `${this.Header.ToString()}${this.Rows.join("\n\r")}`;
   }
-  public ToStringWithHeader() {
-    return `${this.Header.ToString()}\n\r${this.ToString()}`;
+  /**转换为字典类型 */
+  public ToObject(): any {
+    return null;
   }
-
-  public ApplyHeader(HeaderText: string[]) {
+  /**
+   * 配置Header
+   * @param HeaderText
+   * @param Converters
+   */
+  public ApplyHeader(HeaderText: string[], Converters?: Converter[]) {
     if (this.Header == null) {
-      this.HasHeader = true;
-      this.Header = new Header(this);
+      this.Header = new Header(this, true, HeaderText);
     }
-    this.Header.AddContents(HeaderText);
+    else
+      this.Header.AddContents(HeaderText);
   }
+  /**
+   * 添加一行
+   * @param DataRow
+   */
   public AddRow(DataRow: any[]) {
     const _Row = new Row(this);
     _Row.AddContents(DataRow);
     this.Rows.push(_Row);
   }
+
+
+
 
   *[Symbol.iterator]() {
     for (let Row of this.Rows) {
@@ -42,42 +74,92 @@ class Table {
 
 }
 class Row {
-  public readonly Fields: Field[] | null = null;
+  public readonly Fields: Field[] = [];
   public Table: Table;
-  constructor(Table: Table) {
+  constructor(Table?: Table, Vals?: any[], Texts?: string[]) {
     this.Table = Table;
+    if (Vals === null) this.AddContents(Vals);
+    else if (Texts !== null) this.AddTexts(Texts);
   }
-
+  /**
+   * 逐字符的解析完整CSV内容
+   * @param Char1
+   */
   public NextChar(Char1: string): Row {
     const Next = this.Fields[this.Fields.length - 1].NextChar(Char1);
     if (Next.Eof) {
-      let i = 0;
-      this.Fields.forEach(E => {
-        E.ColIndex = i++;
-      });
-      return new Row(this.Table);
+      const NR = new Row(this.Table);
+      NR.Fields.push(Next.Field);
+      return NR;
     }
     else if (Next.Field != null) {
+      Next.Field.ColIndex = this.Fields.length;
       this.Fields.push(Next.Field);
     }
     return null;
   }
+  protected _rp_index: number = 0;
+  public ReplaceChar(Char1: string): boolean {
+    if (this._rp_index < this.Fields.length) {
+      const res = this.Fields[this._rp_index].ReplaceChar(Char1);
+      if (res === 1) {
+        this._rp_index++;
+      }
+      else if (res === 2) {
+        this._rp_index = 0;
+        return true;
+      }
+      else return false;
+    }
+    else {
+      const NewF = new Field(this.Table);
+      NewF.ColIndex = this.Fields.length;
+      this.Fields.push(NewF);
+      const Res = NewF.NextChar(Char1);
+      if (Res.)
+    }
+    return false;
+  }
 
+  /**转换为CSV */
   public ToString(): string {
     return `${this.Fields.join(",")}`;
   }
-
+  /**导出到列表 */
   public ToObject(): any[] {
     const Arr = [];
     this.Fields.forEach(E => Arr.push(E.ToValue()));
     return Arr;
   }
-
+  /**
+   * 从CSV内容添加多列
+   * @param Texts
+   */
+  public AddTexts(Texts: string[]) {
+    Texts.forEach(E => this.AddText(E));
+  }
+  /**
+   * 从CSV内容添加一列
+   * @param Text
+   */
+  public AddText(Text: string) {
+    const Fd = new Field(this.Table);
+    Fd.SetText(Text);
+    this.Fields.push(Fd);
+  }
+  /**
+   * 从一组值添加多列
+   * @param Text
+   */
   public AddContents(Vals: any[]) {
     Vals.forEach(E => {
       this.AddContent(E);
     });
   }
+  /**
+   * 从值添加一列
+   * @param Text
+   */
   public AddContent(Val: any) {
     const Fd = new Field(this.Table);
     Fd.SetValue(Val);
@@ -90,23 +172,22 @@ class Row {
     }
   }
 }
- class Field {
+class Field {
   protected _Chars: string[];
-  public RawText: string | null = null;
-  public Text: string | null = null;
-  protected Enclosed: boolean;
+  protected Text: string = null;
+  protected Enclosed: boolean = true;
   public Table: Table;
   public ColIndex: number;
   public Header(): Field {
-    if (this.Table.HasHeader && this.Table.Rows.length > 0) {
+    if (this.Table.HasHeader() && this.Table.Rows.length > 0) {
       return this.Table.Header.PeekHeader(this.ColIndex);
     }
     return null;
   }
-
-  public IsEnclosed() { return this.Enclosed; }
-  public ToString() { return this.RawText; }
-
+  /**
+   * 逐字符的解析完整CSV内容
+   * @param Char1
+   */
   public NextChar(Char1: string): Eof {
     const Eof = { Eof: false, Field: null };
     if (Char1 === "\"") this.Enclosed = !this.Enclosed;
@@ -117,53 +198,97 @@ class Row {
       }
       else if (Char1 === "\r" && this._Chars.length > 0 && this._Chars[this._Chars.length - 1] === "\n") {
         Eof.Eof = true;
+        Eof.Field = new Field(this.Table);
         this._Chars.slice(this._Chars.length - 1, 1);
         return Eof;
       }
     }
-    if (!(Char1 === "\"" && (this._Chars.length > 0 && this._Chars[this._Chars.length - 1] === "\"")))
+    else
       this._Chars.push(Char1);
     return null;
   }
-
-
+  protected _rp_index: number = 0;
+  /**
+   * 逐字符替换内容
+   * @param Char1
+   * @returns 0=nothing 1=next field 2=next row
+   */
+  public ReplaceChar(Char1: string): number {
+    if (this._rp_index === 0) { this._Chars = []; this.Enclosed = true; this.Text = null; }
+    if (Char1 === "\"") this.Enclosed = !this.Enclosed;
+    if (this.Enclosed) {
+      if (Char1 === ",") {
+        this._rp_index = 0;
+        return 1;
+      }
+      else if (Char1 === "\r" && this._Chars.length > 0 && this._Chars[this._Chars.length - 1] === "\n") {
+        this._rp_index = 0;
+        this._Chars.slice(this._Chars.length - 1, 1);
+        return 2;
+      }
+    }
+    else
+      this._Chars.push(Char1);
+    this._rp_index++;
+    return 0;
+  }
+  /**转换为CSV内容 */
+  public ToString() {
+    if (this.Text !== null) return this.Text;
+    const NewChars = [];
+    let Enc = false;
+    this._Chars.forEach(E => {
+      NewChars.push(E);
+      if (E === "\"") NewChars.push("\"");
+    });
+    const Str = NewChars.join("");
+    this.Text = Str.indexOf("\n\r") != -1 || Str.indexOf(",") != -1 ? `"${Str}"` : Str;
+    return this.Text;
+  }
+  /**转换为值 */
+  public ToValue(): any {
+    return this.Table.Header.PeekConverter(this.ColIndex).From(this._Chars.join(""));
+  }
+  /**
+   * 输入值
+   * @param Value
+   */
   public SetValue(Value: any) {
     this.SetText(this.Table.Header.PeekConverter(this.ColIndex).To(Value));
   }
+  /**
+   * 输入CSV Field内容
+   * @param Text
+   */
   public SetText(Text: string) {
-    this.Text = Text;
     this._Chars = [];
-    for (let i = this.Text.length - 1; i >= 0; i--) {
-      this._Chars.push(this.Text[i]);
-      if (this.Text[i] == "\"") {
-        this._Chars.push("\"");
+    this.Text = Text;
+    this.Enclosed = true;
+    for (let i = 0; i < Text.length; i++) {
+      if (Text[i] == "\"") this.Enclosed = !this.Enclosed;
+      if (this.Enclosed) {
+
       }
-      else if (!this.Enclosed && (this.RawText[i] === "," || (this.RawText[i] === "\r" && i > 0 && this.RawText[i - 1] === "\n"))) this.Enclosed = true;
+      else {
+        this._Chars.push(Text[i]);
+      }
     }
-    if (this.Enclosed) {
-      this._Chars.push("\"");
-      this._Chars.unshift("\"");
-    }
-    this.RawText = this._Chars.join("");
   }
 
-  public ToValue(): any {
-    return this.Table.Header.PeekConverter(this.ColIndex).From(this.Text);
-  }
 
   constructor(Table: Table) {
     this.Table = Table;
   }
-  public static FromCSVText(Row: Row, Text: string): Field {
-    const F = new Field(Row.Table);
-    F.SetText(Text);
-    return F;
-  }
-  public static FormObject(Row: Row, Value: any): Field {
-    const F = new Field(Row.Table);
-    F.SetValue(Value);
-    return F;
-  }
+  //public static FromCSVText(Row: Row, Text: string): Field {
+  //  const F = new Field(Row.Table);
+  //  F.SetText(Text);
+  //  return F;
+  //}
+  //public static FormObject(Row: Row, Value: any): Field {
+  //  const F = new Field(Row.Table);
+  //  F.SetValue(Value);
+  //  return F;
+  //}
 
 
 }
@@ -172,8 +297,10 @@ interface Converter {
   To(any): string;
   From(string): any;
 }
-export class Header extends Row {
+class Header extends Row {
   protected Converters: Converter[];
+
+  public IsContent: boolean;
 
   public static FullbackConverter(): Converter {
     return {
@@ -199,17 +326,30 @@ export class Header extends Row {
     return this.Converters[ColIndex];
   }
 
-   public AddContents(Text: string[]) {
-    Text.forEach(E => {
-      this.AddContent(E);
-    });
+  public AddContents(Texts: string[]) {
+    this.AddTexts(Texts);
   }
   public AddContent(Text: string) {
-      const Fd = new Field(this.Table);
-      this.Converters.push(Header.FullbackConverter());
-      Fd.SetValue(Text);
-      this.Fields.push(Fd);
+    this.AddText(Text);
   }
+  public AddTexts(Texts: string[], Converters?: Converter[]) {
+    Converters = Converters ?? [];
+    for (let i = 0; i < Texts.length; i++) {
+      const C = i < Converters.length ? Converters[i] : Header.FullbackConverter();
+      this.AddText(Texts[i], C)
+    }
+  }
+  public AddText(Text: string, Converter?: Converter) {
+    const Fd = new Field(this.Table);
+    Fd.SetText(Text);
+    this.Converters.push(Converter ?? Header.FullbackConverter());
+    this.Fields.push(Fd);
+  }
+
+  public ToString(): string {
+    return this.IsContent ? "" : `${this.Fields.join("\n\r")}\n\r`;
+  }
+
   public NextChar(Char1: string) {
     const Next = this.Fields[this.Fields.length - 1].NextChar(Char1);
     if (Next.Eof) {
@@ -222,24 +362,30 @@ export class Header extends Row {
       return new Row(this.Table);
     }
     else if (Next.Field != null) {
-      if (Next.Field.Text === '' && this.Fields.length > 0) {
-        Next.Field.Text = this.Fields[this.Fields.length].Text;
+      const HT = Next.Field.ToString();
+      if (HT === '' && this.Fields.length > 0) {
+        Next.Field.SetText(this.Fields[this.Fields.length].ToString());
       }
       this.Fields.push(Next.Field);
     }
     return null;
   }
 
-  constructor(Table: Table, FirstRow: Row) {
+  constructor(Table?: Table, IsContent?: boolean, HeaderTexts?: string[], Converters?: Converter[]) {
     super(Table);
+    this.Converters = Converters ?? [];
+    this.IsContent = IsContent ?? false;
+    if (HeaderTexts !== null) {
+      this.AddContents(HeaderTexts);
+    }
   }
 
 
 }
 
 class CSV {
-  public static FromCSV(CSVText: string): Table {
-    const Tb = new Table();
+  public static FromCSV(CSVText: string, HasHeader: boolean): Table {
+    const Tb = new Table(null, null);
     for (const C of CSVText) {
       Tb.NextChar(C);
     }
@@ -247,7 +393,7 @@ class CSV {
   }
 
   public static ToCSV(Table: Table): string {
-    return Table.ToStringWithHeader();
+    return Table.ToString();
   }
 
   public static readonly MIMEType: string = "text/csv";
