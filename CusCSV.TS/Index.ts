@@ -116,7 +116,7 @@ class Row {
       NewF.ColIndex = this.Fields.length;
       this.Fields.push(NewF);
       const Res = NewF.NextChar(Char1);
-      if (Res.)
+      //if (Res.)
     }
     return false;
   }

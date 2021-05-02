@@ -7,12 +7,13 @@
     "sourceMap": true,
     "target": "es5",
     "declaration": true,
-    "outDir": "./lib",
+    "outDir": "./bin",
+    "declarationDir": "./bin/declaration",
     "lib": [ "ES2015" ]
   },
   "include": [
     "src"
-  ],
+, "Index.ts"  ],
   "exclude": [
     "node_modules",
     "lib"
