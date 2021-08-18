@@ -9,11 +9,30 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Try", "Try\Try.csproj", "{8
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CusCSV.TS", "CusCSV.TS\CusCSV.TS.njsproj", "{3736949F-9F03-4A48-A6D4-E4C76CEF8A9E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSVHelperGenerator", "CSVHelperGenerator\CSVHelperGenerator.csproj", "{8502F586-0555-4ECE-94E5-632A74BF9886}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSVHelperGenerator", "CSVHelperGenerator\CSVHelperGenerator.csproj", "{8502F586-0555-4ECE-94E5-632A74BF9886}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSVHelperReflection", "CSVHelperReflection\CSVHelperReflection.csproj", "{805BBD54-FA49-4627-925E-A53CB7ED2660}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSVHelperReflection", "CSVHelperReflection\CSVHelperReflection.csproj", "{805BBD54-FA49-4627-925E-A53CB7ED2660}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "KatKitsCommon", "KatKits\KatKitsCommon\KatKitsCommon.shproj", "{4D582CF4-0CBA-4052-880D-4E5508FC9E1C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSVTest", "CSVTest\CSVTest.csproj", "{C6E36050-5D2F-430D-BAC4-E0AC814A1640}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "CusCSV.Shared", "CusCSV.Shared\CusCSV.Shared.shproj", "{395537EE-BF05-4277-8C4C-0DF1E2E2670B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CusCSV", "CusCSV\CusCSV.csproj", "{EA7ADA78-DED3-40D0-93EC-B246D1216778}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CusCSV.Framework", "CusCSV.Framework\CusCSV.Framework.csproj", "{B561E2D9-C2FC-4A8D-A4E2-11FA2F1CA2A8}"
 EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		CusCSV.Shared\CusCSV.Shared.projitems*{395537ee-bf05-4277-8c4c-0df1e2e2670b}*SharedItemsImports = 13
+		KatKits\KatKitsCommon\KatKitsCommon.projitems*{4d582cf4-0cba-4052-880d-4e5508fc9e1c}*SharedItemsImports = 13
+		KatKits\KatKitsCommon\KatKitsCommon.projitems*{791d66d8-c6a4-4b0f-903e-b1746574f3eb}*SharedItemsImports = 5
+		CusCSV.Shared\CusCSV.Shared.projitems*{b561e2d9-c2fc-4a8d-a4e2-11fa2f1ca2a8}*SharedItemsImports = 4
+		KatKits\KatKitsCommon\KatKitsCommon.projitems*{b561e2d9-c2fc-4a8d-a4e2-11fa2f1ca2a8}*SharedItemsImports = 4
+		CusCSV.Shared\CusCSV.Shared.projitems*{ea7ada78-ded3-40d0-93ec-b246d1216778}*SharedItemsImports = 5
+		KatKits\KatKitsCommon\KatKitsCommon.projitems*{ea7ada78-ded3-40d0-93ec-b246d1216778}*SharedItemsImports = 5
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -39,6 +58,18 @@ Global
 		{805BBD54-FA49-4627-925E-A53CB7ED2660}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{805BBD54-FA49-4627-925E-A53CB7ED2660}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{805BBD54-FA49-4627-925E-A53CB7ED2660}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6E36050-5D2F-430D-BAC4-E0AC814A1640}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6E36050-5D2F-430D-BAC4-E0AC814A1640}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6E36050-5D2F-430D-BAC4-E0AC814A1640}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6E36050-5D2F-430D-BAC4-E0AC814A1640}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA7ADA78-DED3-40D0-93EC-B246D1216778}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA7ADA78-DED3-40D0-93EC-B246D1216778}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA7ADA78-DED3-40D0-93EC-B246D1216778}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA7ADA78-DED3-40D0-93EC-B246D1216778}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B561E2D9-C2FC-4A8D-A4E2-11FA2F1CA2A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B561E2D9-C2FC-4A8D-A4E2-11FA2F1CA2A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B561E2D9-C2FC-4A8D-A4E2-11FA2F1CA2A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B561E2D9-C2FC-4A8D-A4E2-11FA2F1CA2A8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

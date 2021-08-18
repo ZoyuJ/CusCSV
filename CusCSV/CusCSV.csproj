@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <Import Project="..\CusCSV.Shared\CusCSV.Shared.projitems" Label="Shared" />
+
+  <Import Project="..\KatKits\KatKitsCommon\KatKitsCommon.projitems" Label="Shared" />
+
+</Project>

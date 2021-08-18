@@ -18,7 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="CSV.cs" />
     <Compile Remove="CSV2.cs" />
   </ItemGroup>
+
+  <Import Project="..\KatKits\KatKitsCommon\KatKitsCommon.projitems" Label="Shared" />
 
 </Project>
