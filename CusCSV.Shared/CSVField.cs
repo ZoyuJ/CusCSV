@@ -19,45 +19,79 @@
     public readonly CSVRow Row;
     public readonly CSVColumn Column;
 
+
     public string Text { get; set; }
     /// <summary>
     /// 
     /// </summary>
     /// <param name="Char1"></param>
-    /// <param name="Enclosed"></param>
+    /// <param name="Escaped"></param>
     /// <param name="StrBd"></param>
     /// <returns>0:need nore char,1:create new field,2:create new line</returns>
-    internal int NextChar(char Char1, ref bool Enclosed, ref StringBuilder StrBd)
+    internal int NextChar(int Char1, ref bool Escaped, ref StringBuilder StrBd)
     {
-      if (Char1 == '\"')
+      if(Char1 == -1)
       {
-        Enclosed = !Enclosed;
+        if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
+        {
+          StrBd.Remove(0, 1);
+          StrBd.Remove(StrBd.Length - 1, 1);
+        }
+        StrBd.Replace("\"\"", "\"");
+        Text = StrBd.ToString();
+        StrBd.Clear();
+        return 3;
       }
-      if (Enclosed)
+      var CH = (char)Char1;
+      if (CH == CSVTableAttribute.QUOTE)
       {
-        if (Char1 == ',')
+        Escaped = !Escaped;
+        //return 0;
+      }
+      if (!Escaped)
+      {
+        StrBd.Append(CH);
+      }
+      else
+      {
+        if (CH == CSVTableAttribute.COMMA)
         {
           //next field
+          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
+          {
+            StrBd.Remove(0, 1);
+            StrBd.Remove(StrBd.Length-1, 1);
+          }
+          StrBd.Replace("\"\"", "\"");
           Text = StrBd.ToString();
           StrBd.Clear();
           return 1;
         }
-        else if (Char1 == '\r' && StrBd.Length > 0 && StrBd[StrBd.Length - 1] == '\n')
+        else if (CH == CSVTableAttribute.LINE_FEED && StrBd.Length > 0 && StrBd[StrBd.Length - 1] == CSVTableAttribute.RETUEN)
         {
           //next line
           StrBd.Remove(StrBd.Length - 1, 1);
+          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
+          {
+            StrBd.Remove(0, 1);
+            StrBd.Remove(StrBd.Length - 1, 1);
+          }
+          StrBd.Replace("\"\"", "\"");
           Text = StrBd.ToString();
           StrBd.Clear();
           return 2;
         }
+        else
+        {
+          StrBd.Append(CH);
+        }
       }
 
-      if (!(Char1 == '\"' && (StrBd.Length > 0 && StrBd[StrBd.Length - 1] == '\"')))
-        //normal char
-        StrBd.Append(Char1);
-
       return 0;
+
+
     }
+
     public void Set(object Obj)
     {
       if (Obj.GetType().IsBasicDataType())
@@ -113,13 +147,14 @@
         if (StrBd[i] == '\"')
         {
           StrBd.Insert(i, '\"');
+          HasToEnclosed = true;
         }
         else
         {
           if (!HasToEnclosed
               && (
                 StrBd[i] == ','
-                || (StrBd[i] == '\r' && i > 0 && StrBd[i - 1] == '\n')
+                || (StrBd[i] == '\n' && i > 0 && StrBd[i - 1] == '\r')
               )
             )
             HasToEnclosed = true;

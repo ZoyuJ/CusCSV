@@ -14,6 +14,11 @@ namespace CusCSV
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
   public class CSVTableAttribute : Attribute
   {
+    public const char COMMA = ',';
+    public const char QUOTE = '\"';
+    public const char RETUEN = '\r';
+    public const char LINE_FEED = '\n';
+
     public string TableName { get; set; } = "default";
     public Type TypeHandle { get; set; }
 
@@ -86,104 +91,116 @@ namespace CusCSV
     {
       var Attrs = CSVTableAttribute.FetchAttributes(TargetType, TableName);
       Attrs._Columns.ForEach(E => Columns.AddLast(new CSVColumn() { DataType = E.Property.PropertyType, Text = E.ColumnName }));
+      this.TableName = TableName;
     }
+    public CSVTable()
+    {
 
+    }
     /// <summary>
     /// 
     /// </summary>
     /// <param name="Char1"></param>
-    /// <param name="Enclosed"></param>
+    /// <param name="Column"></param>
+    /// <param name="Escaped"></param>
     /// <param name="StrBd"></param>
-    /// <returns>0:need more char,2:create next row</returns>
-    internal int NextChar(char Char1, CSVColumn Column, ref bool Enclosed, ref StringBuilder StrBd)
+    /// <returns>0:need more char,2:create next row,3:done</returns>
+    internal int NextChar(int Char1, CSVColumn Column, ref bool Escaped, ref StringBuilder StrBd)
     {
-      switch (Rows.Last.Value.NextChar(Char1, Column, ref Enclosed, ref StrBd))
+      switch (Rows.Last.Value.NextChar(Char1, Column, ref Escaped, ref StrBd))
       {
         case 1:
           return 1;
         case 2:
           Rows.AddLast(new CSVRow(this));
+          Rows.Last.Value.Fields.AddLast(new CSVField(this, Rows.Last.Value, Column));
           return 2;
+        case 3:
+          return 3;
       }
       return 0;
     }
-    public void ReadFromStream(TextReader Reader)
+    public void ParseFromStream(TextReader Reader)
     {
+      this.Columns.Clear();
+      this.Rows.Clear();
       var StrBd = new StringBuilder();
-      var Enclosed = false;
-      char Char1;
-      int Next = 0;
-      var Column = this.Columns.First;
+      var Escaped = true;
       int ColCount = 0;
-      while ((Char1 = (char)Reader.Read()) != -1)
+      this.Columns.AddLast(new CSVColumn());
+      var Column = this.Columns.Last;
+      this.Rows.AddLast(new CSVRow(this));
+      this.Rows.Last.Value.Fields.AddLast(new CSVField(this, Rows.First.Value, this.Columns.First.Value));
+      bool HasColumns = false;
+      var CharInt = 0;
+      while ((CharInt = Reader.Read()) != -1)
       {
-        Next = this.NextChar((char)Char1, Column.Value, ref Enclosed, ref StrBd);
-        if (Next == 1)
+        switch (this.NextChar(CharInt, Column.Value, ref Escaped, ref StrBd))
         {
-          Column = Column.Next;
-          if (Column == null)
-            throw new ColumnOutOfRangeException(ColCount, this.Columns.Count);
-          ColCount++;
-        }
-        else if (Next == 2)
-        {
-          Column = this.Columns.First;
-          ColCount = 0;
-        }
-      }
-      if (Next == 0)
-      {
-        throw new DamagedCSVFileException(Rows.Count);
-      }
-      if (Next == 2)
-      {
-        this.Rows.RemoveLast();
-      }
-
-
-    }
-    public IEnumerable<CSVRow> ReadRowFromStream(TextReader Reader)
-    {
-      var StrBd = new StringBuilder();
-      var Enclosed = false;
-      char Char1;
-      int Next = 0;
-      int ColCount = 0;
-      var Column = this.Columns.First;
-      while ((Char1 = (char)Reader.Read()) != -1)
-      {
-        Next = this.NextChar((char)Char1, Column.Value, ref Enclosed, ref StrBd);
-        if (Next == 1)
-        {
-          Column = Column.Next;
-          if (Column == null)
-            throw new ColumnOutOfRangeException(ColCount, this.Columns.Count);
-          ColCount++;
-        }
-        else if (Next == 2)
-        {
-          Column = this.Columns.First;
-          yield return Rows.Last.Previous.Value;
-          ColCount = 0;
+          case 1:
+            if (HasColumns)
+            {
+              Column = Column.Next;
+            }
+            else
+            {
+              Columns.AddLast(new CSVColumn());
+              Column = Columns.Last;
+            }
+            ColCount++;
+            break;
+          case 2:
+            Column = this.Columns.First;
+            HasColumns = true;
+            ColCount = 0;
+            break;
         }
       }
-      if (Next == 0)
-      {
-        throw new DamagedCSVFileException(Rows.Count);
-      }
-      if (Next == 2)
-      {
-        this.Rows.RemoveLast();
-      }
-
-
+      _ = this.NextChar(-1, Column.Value, ref Escaped, ref StrBd);
     }
 
+    public void ParseFromText(string CSVText)
+    {
+      this.Columns.Clear();
+      this.Rows.Clear();
+      var StrBd = new StringBuilder();
+      var Escaped = true;
+      int ColCount = 0;
+      this.Columns.AddLast(new CSVColumn());
+      var Column = this.Columns.Last;
+      this.Rows.AddLast(new CSVRow(this));
+      this.Rows.Last.Value.Fields.AddLast(new CSVField(this, Rows.First.Value, this.Columns.First.Value));
+      bool HasColumns = false;
+      for (int i = 0; i < CSVText.Length; i++)
+      {
+        switch (this.NextChar((char)CSVText[i], Column.Value, ref Escaped, ref StrBd))
+        {
+          case 1:
+            if (HasColumns)
+            {
+              Column = Column.Next;
+            }
+            else
+            {
+              Columns.AddLast(new CSVColumn());
+              Column = Columns.Last;
+            }
+            ColCount++;
+            break;
+          case 2:
+            Column = this.Columns.First;
+            HasColumns = true;
+            ColCount = 0;
+            break;
+        }
+      }
+      _ = this.NextChar(-1, Column.Value, ref Escaped, ref StrBd);
+    }
 
 
-    public override string ToString() =>
-  $"{string.Join("\n\r", Rows)}";
-    public string ToString(bool WithHeader) =>
-      WithHeader ? $"{string.Join(",", Columns)}\n\r{ToString()}" : ToString();
+    public string ToCSVString() =>
+      Rows.Count == 0 ? "" : $"{string.Join("\r\n", Rows.Select(E => E.ToCSVString()))}";
+    public string ToCSVString(bool WithHeader) =>
+      WithHeader ? $"{string.Join(",", Columns)}\r\n{ToString()}" : ToString();
   }
 }
