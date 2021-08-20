@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)CSVColumn.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CSVExpress.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CSVField.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CSVRow.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CSVTable.cs" />

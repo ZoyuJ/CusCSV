@@ -6,7 +6,13 @@
 
   public class CSVColumn : IEquatable<CSVColumn>, IComparer<CSVColumn>, IComparable<CSVColumn>
   {
-    public string Text { get; set; }
+    internal CSVColumn() { }
+    public CSVColumn(string Text)
+    {
+      this.Text = Text;
+    }
+
+    public string Text { get; set; } = "";
     public Type DataType { get; set; }
 
     public override string ToString()

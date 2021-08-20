@@ -9,6 +9,10 @@
 
   public class CSVField
   {
+    internal CSVField(CSVColumn Column)
+    {
+      this.Column = Column;
+    }
     public CSVField(CSVTable Table, CSVRow Row, CSVColumn Column)
     {
       this.Table = Table;
@@ -28,68 +32,26 @@
     /// <param name="Escaped"></param>
     /// <param name="StrBd"></param>
     /// <returns>0:need nore char,1:create new field,2:create new line</returns>
-    internal int NextChar(int Char1, ref bool Escaped, ref StringBuilder StrBd)
+    internal CSVReaderStatus NextChar(int Char1, ref bool Escaped, ref StringBuilder StrBd)
     {
-      if(Char1 == -1)
+      switch (CSVExpress. CharByChar(Char1,ref Escaped,ref StrBd))
       {
-        if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
-        {
-          StrBd.Remove(0, 1);
-          StrBd.Remove(StrBd.Length - 1, 1);
-        }
-        StrBd.Replace("\"\"", "\"");
-        Text = StrBd.ToString();
-        StrBd.Clear();
-        return 3;
-      }
-      var CH = (char)Char1;
-      if (CH == CSVTableAttribute.QUOTE)
-      {
-        Escaped = !Escaped;
-        //return 0;
-      }
-      if (!Escaped)
-      {
-        StrBd.Append(CH);
-      }
-      else
-      {
-        if (CH == CSVTableAttribute.COMMA)
-        {
-          //next field
-          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
-          {
-            StrBd.Remove(0, 1);
-            StrBd.Remove(StrBd.Length-1, 1);
-          }
-          StrBd.Replace("\"\"", "\"");
+        case CSVReaderStatus.MoreChar:
+        default:
+          return CSVReaderStatus.MoreChar;
+        case CSVReaderStatus.NewField:
           Text = StrBd.ToString();
           StrBd.Clear();
-          return 1;
-        }
-        else if (CH == CSVTableAttribute.LINE_FEED && StrBd.Length > 0 && StrBd[StrBd.Length - 1] == CSVTableAttribute.RETUEN)
-        {
-          //next line
-          StrBd.Remove(StrBd.Length - 1, 1);
-          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
-          {
-            StrBd.Remove(0, 1);
-            StrBd.Remove(StrBd.Length - 1, 1);
-          }
-          StrBd.Replace("\"\"", "\"");
+          return CSVReaderStatus.NewField;
+        case CSVReaderStatus.NewRow:
           Text = StrBd.ToString();
           StrBd.Clear();
-          return 2;
-        }
-        else
-        {
-          StrBd.Append(CH);
-        }
+          return CSVReaderStatus.NewRow;
+        case CSVReaderStatus.EndOfText:
+          Text = StrBd.ToString();
+          StrBd.Clear();
+          return CSVReaderStatus.EndOfText;
       }
-
-      return 0;
-
-
     }
 
     public void Set(object Obj)

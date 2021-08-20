@@ -16,7 +16,7 @@ namespace CusCSV
   {
     public const char COMMA = ',';
     public const char QUOTE = '\"';
-    public const char RETUEN = '\r';
+    public const char RETURN = '\r';
     public const char LINE_FEED = '\n';
 
     public string TableName { get; set; } = "default";
@@ -105,20 +105,22 @@ namespace CusCSV
     /// <param name="Escaped"></param>
     /// <param name="StrBd"></param>
     /// <returns>0:need more char,2:create next row,3:done</returns>
-    internal int NextChar(int Char1, CSVColumn Column, ref bool Escaped, ref StringBuilder StrBd)
+    internal CSVReaderStatus NextChar(int Char1, CSVColumn Column, ref bool Escaped, ref StringBuilder StrBd)
     {
       switch (Rows.Last.Value.NextChar(Char1, Column, ref Escaped, ref StrBd))
       {
-        case 1:
-          return 1;
-        case 2:
+        case CSVReaderStatus.MoreChar:
+        default:
+          return CSVReaderStatus.MoreChar;
+        case CSVReaderStatus.NewField:
+          return CSVReaderStatus.NewField;
+        case CSVReaderStatus.NewRow:
           Rows.AddLast(new CSVRow(this));
           Rows.Last.Value.Fields.AddLast(new CSVField(this, Rows.Last.Value, Column));
-          return 2;
-        case 3:
-          return 3;
+          return CSVReaderStatus.NewRow;
+        case CSVReaderStatus.EndOfText:
+          return CSVReaderStatus.EndOfText;
       }
-      return 0;
     }
     public void ParseFromStream(TextReader Reader)
     {
@@ -137,7 +139,7 @@ namespace CusCSV
       {
         switch (this.NextChar(CharInt, Column.Value, ref Escaped, ref StrBd))
         {
-          case 1:
+          case CSVReaderStatus.NewField:
             if (HasColumns)
             {
               Column = Column.Next;
@@ -149,7 +151,7 @@ namespace CusCSV
             }
             ColCount++;
             break;
-          case 2:
+          case CSVReaderStatus.NewRow:
             Column = this.Columns.First;
             HasColumns = true;
             ColCount = 0;
@@ -175,7 +177,7 @@ namespace CusCSV
       {
         switch (this.NextChar((char)CSVText[i], Column.Value, ref Escaped, ref StrBd))
         {
-          case 1:
+          case CSVReaderStatus.NewField:
             if (HasColumns)
             {
               Column = Column.Next;
@@ -187,7 +189,7 @@ namespace CusCSV
             }
             ColCount++;
             break;
-          case 2:
+          case CSVReaderStatus.NewRow:
             Column = this.Columns.First;
             HasColumns = true;
             ColCount = 0;
@@ -196,11 +198,24 @@ namespace CusCSV
       }
       _ = this.NextChar(-1, Column.Value, ref Escaped, ref StrBd);
     }
-
+    public void ParseFromText(string CSVText, bool HasHeader)
+    {
+      ParseFromText(CSVText);
+      if (HasHeader)
+      {
+        var FR = this.Rows.First;
+        FR.Value.Fields.Zip(this.Columns, (L, R) => new { FField = L, Head = R }).ToArray().ForEach(E => E.Head.Text = E.FField.Text);
+        this.Rows.RemoveFirst();
+      }
+    }
 
     public string ToCSVString() =>
       Rows.Count == 0 ? "" : $"{string.Join("\r\n", Rows.Select(E => E.ToCSVString()))}";
     public string ToCSVString(bool WithHeader) =>
       WithHeader ? $"{string.Join(",", Columns)}\r\n{ToString()}" : ToString();
+
+
+
+
   }
 }
