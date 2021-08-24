@@ -85,6 +85,7 @@
     public static LinkedList<CSVColumn> ReadHeaders(TextReader Reader)
     {
       var Header = new LinkedList<CSVColumn>();
+      Header.AddLast(new CSVColumn());
       var CharInt = 0;
       var Escaped = true;
       var StrBd = new StringBuilder();
@@ -104,7 +105,6 @@
           case CSVReaderStatus.EndOfText:
             Header.Last.Value.Text = StrBd.ToString();
             StrBd.Clear();
-            Header.AddLast(new CSVColumn());
             return Header;
         }
       }

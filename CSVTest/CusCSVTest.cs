@@ -36,19 +36,22 @@
       public string P6 { get; set; }
     }
     [Theory]
+    //Empty
     [InlineData("", null)]
+    //One Field
     [InlineData("1", null)]
     [InlineData("\"\"\"1\"", null)]
     [InlineData("\"1\"\"\"", null)]
     [InlineData("1\n\r1", null)]
     [InlineData("\"1\r\n1\"", null)]
+    //Multi Field
     [InlineData("aaa,bbb,ccc", null)]
     [InlineData("aaa,bbb,ccc\n\r", null)]
     [InlineData("\"aaa\",\"bbb\",ccc", "aaa,bbb,ccc")]
     [InlineData("\"aaa\",\"bbb\",ccc\n\r", "aaa,bbb,ccc\n\r")]
     [InlineData("\"aaa\",b \n\r bb,ccc", "aaa,b \n\r bb,ccc")]
     [InlineData("\"aaa\",\"b \r\n bb\",ccc", "aaa,\"b \r\n bb\",ccc")]
-
+    //Multi Line
     [InlineData("aaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc", null)]
     [InlineData("aaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc", null)]
     public void ReadFromCSVText(string Text, string AlterN)
@@ -59,19 +62,22 @@
       Assert.Equal(AlterN, Tb.ToCSVString());
     }
     [Theory]
+    //Empty
     [InlineData("", null)]
+    //One Field
     [InlineData("1", null)]
     [InlineData("\"\"\"1\"", null)]
     [InlineData("\"1\"\"\"", null)]
     [InlineData("1\n\r1", null)]
     [InlineData("\"1\r\n1\"", null)]
+    //Multi Field
     [InlineData("aaa,bbb,ccc", null)]
     [InlineData("aaa,bbb,ccc\n\r", null)]
     [InlineData("\"aaa\",\"bbb\",ccc", "aaa,bbb,ccc")]
     [InlineData("\"aaa\",\"bbb\",ccc\n\r", "aaa,bbb,ccc\n\r")]
     [InlineData("\"aaa\",b \n\r bb,ccc", "aaa,b \n\r bb,ccc")]
     [InlineData("\"aaa\",\"b \r\n bb\",ccc", "aaa,\"b \r\n bb\",ccc")]
-    [InlineData("\"aaa\",\"b \"\" bb\",ccc", "aaa,\"b \"\" bb\",ccc")]
+    //Multi Line
     [InlineData("aaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc", null)]
     [InlineData("aaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc", null)]
     public void ReadFromCSVStream(string Text,string AlterN)
