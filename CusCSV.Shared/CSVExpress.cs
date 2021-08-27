@@ -1,5 +1,4 @@
-﻿namespace CusCSV
-{
+﻿namespace CusCSV {
   using System;
   using System.Collections.Generic;
   using System.Data;
@@ -7,16 +6,14 @@
   using System.Linq;
   using System.Text;
 
-  internal enum CSVReaderStatus
-  {
+  internal enum CSVReaderStatus {
     MoreChar = 0,
     NewField = 1,
     NewRow = 2,
     EndOfText = 3,
   }
 
-  public static class CSVExpress
-  {
+  public static class CSVExpress {
     /// <summary>
     /// 
     /// </summary>
@@ -24,12 +21,9 @@
     /// <param name="Escaped">init=true</param>
     /// <param name="StrBd">init=""</param>
     /// <returns>0:need nore char,1:create new field,2:create new line</returns>
-    internal static CSVReaderStatus CharByChar(int Char1, ref bool Escaped, ref StringBuilder StrBd)
-    {
-      if (Char1 == -1)
-      {
-        if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
-        {
+    internal static CSVReaderStatus CharByChar(int Char1, ref bool Escaped, ref StringBuilder StrBd) {
+      if (Char1 == -1) {
+        if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE) {
           StrBd.Remove(0, 1);
           StrBd.Remove(StrBd.Length - 1, 1);
         }
@@ -37,42 +31,34 @@
         return CSVReaderStatus.EndOfText;
       }
       var CH = (char)Char1;
-      if (CH == CSVTableAttribute.QUOTE)
-      {
+      if (CH == CSVTableAttribute.QUOTE) {
         Escaped = !Escaped;
         //return 0;
       }
-      if (!Escaped)
-      {
+      if (!Escaped) {
         StrBd.Append(CH);
       }
-      else
-      {
-        if (CH == CSVTableAttribute.COMMA)
-        {
+      else {
+        if (CH == CSVTableAttribute.COMMA) {
           //next field
-          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
-          {
+          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE) {
             StrBd.Remove(0, 1);
             StrBd.Remove(StrBd.Length - 1, 1);
           }
           StrBd.Replace("\"\"", "\"");
           return CSVReaderStatus.NewField;
         }
-        else if (CH == CSVTableAttribute.LINE_FEED && StrBd.Length > 0 && StrBd[StrBd.Length - 1] == CSVTableAttribute.RETURN)
-        {
+        else if (CH == CSVTableAttribute.LINE_FEED && StrBd.Length > 0 && StrBd[StrBd.Length - 1] == CSVTableAttribute.RETURN) {
           //next line
           StrBd.Remove(StrBd.Length - 1, 1);
-          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE)
-          {
+          if (StrBd.Length > 2 && StrBd[0] == CSVTableAttribute.QUOTE && StrBd[StrBd.Length - 1] == CSVTableAttribute.QUOTE) {
             StrBd.Remove(0, 1);
             StrBd.Remove(StrBd.Length - 1, 1);
           }
           StrBd.Replace("\"\"", "\"");
           return CSVReaderStatus.NewRow;
         }
-        else
-        {
+        else {
           StrBd.Append(CH);
         }
       }
@@ -82,17 +68,14 @@
 
     }
 
-    public static LinkedList<CSVColumn> ReadHeaders(TextReader Reader)
-    {
+    public static LinkedList<CSVColumn> ReadHeaders(TextReader Reader) {
       var Header = new LinkedList<CSVColumn>();
       Header.AddLast(new CSVColumn());
       var CharInt = 0;
       var Escaped = true;
       var StrBd = new StringBuilder();
-      while ((CharInt = Reader.Read()) != -1)
-      {
-        switch (CharByChar(CharInt, ref Escaped, ref StrBd))
-        {
+      while ((CharInt = Reader.Read()) != -1) {
+        switch (CharByChar(CharInt, ref Escaped, ref StrBd)) {
           case CSVReaderStatus.MoreChar:
           default:
             break;
@@ -110,26 +93,23 @@
       }
       return Header;
     }
-    public static IEnumerable<CSVRow> ReadRow(TextReader Reader, LinkedList<CSVColumn> Columns)
-    {
+    public static IEnumerable<CSVRow> ReadRow(TextReader Reader, LinkedList<CSVColumn> Columns) {
       var CharInt = 0;
       var Escaped = true;
       var StrBd = new StringBuilder();
       var CurrentCol = Columns.First;
       var CSVRow = new CSVRow();
       CSVRow.Fields.AddLast(new CSVField(CurrentCol.Value));
-      while ((CharInt = Reader.Read()) != -1)
-      {
-        switch (CharByChar(CharInt, ref Escaped, ref StrBd))
-        {
+      while ((CharInt = Reader.Read()) != -1) {
+        switch (CharByChar(CharInt, ref Escaped, ref StrBd)) {
           case CSVReaderStatus.MoreChar:
           default:
             break;
           case CSVReaderStatus.NewField:
             CSVRow.Fields.Last.Value.Text = StrBd.ToString();
             StrBd.Clear();
-            CSVRow.Fields.AddLast(new CSVField(CurrentCol.Value));
             CurrentCol = CurrentCol.Next;
+            CSVRow.Fields.AddLast(new CSVField(CurrentCol.Value));
             break;
           case CSVReaderStatus.NewRow:
             CSVRow.Fields.Last.Value.Text = StrBd.ToString();
@@ -147,6 +127,68 @@
         yield break;
       }
     }
-
+    public static IEnumerable<CSVRow> ReadRow(TextReader Reader) {
+      var CharInt = 0;
+      var Escaped = true;
+      var StrBd = new StringBuilder();
+      var CSVRow = new CSVRow();
+      CSVRow.Fields.AddLast(new CSVField());
+      while ((CharInt = Reader.Read()) != -1) {
+        switch (CharByChar(CharInt, ref Escaped, ref StrBd)) {
+          case CSVReaderStatus.MoreChar:
+          default:
+            continue;
+          case CSVReaderStatus.NewField:
+            CSVRow.Fields.Last.Value.Text = StrBd.ToString();
+            StrBd.Clear();
+            CSVRow.Fields.AddLast(new CSVField());
+            continue;
+          case CSVReaderStatus.NewRow:
+            CSVRow.Fields.Last.Value.Text = StrBd.ToString();
+            StrBd.Clear();
+            yield return CSVRow;
+            CSVRow = new CSVRow();
+            CSVRow.Fields.AddLast(new CSVField());
+            continue;
+        }
+      }
+      _ = CharByChar(-1, ref Escaped, ref StrBd);
+      CSVRow.Fields.Last.Value.Text = StrBd.ToString();
+      StrBd.Clear();
+      yield return CSVRow;
+      yield break;
+    }
+    public static IEnumerable<CSVRow> ReadRow(string Text) {
+      var CharInt = 0;
+      var Escaped = true;
+      var StrBd = new StringBuilder();
+      var CSVRow = new CSVRow();
+      CSVRow.Fields.AddLast(new CSVField());
+      for (int i = 0; i < Text.Length; i++) {
+        CharInt = Text[i];
+        switch (CharByChar(CharInt, ref Escaped, ref StrBd)) {
+          case CSVReaderStatus.MoreChar:
+          default:
+            continue;
+          case CSVReaderStatus.NewField:
+            CSVRow.Fields.Last.Value.Text = StrBd.ToString();
+            StrBd.Clear();
+            CSVRow.Fields.AddLast(new CSVField());
+            continue;
+          case CSVReaderStatus.NewRow:
+            CSVRow.Fields.Last.Value.Text = StrBd.ToString();
+            StrBd.Clear();
+            yield return CSVRow;
+            CSVRow = new CSVRow();
+            CSVRow.Fields.AddLast(new CSVField());
+            continue;
+        }
+      }
+      CharByChar(-1, ref Escaped, ref StrBd);
+      CSVRow.Fields.Last.Value.Text = StrBd.ToString();
+      StrBd.Clear();
+      yield return CSVRow;
+      yield break;
+    }
   }
 }

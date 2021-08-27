@@ -1,5 +1,4 @@
-﻿namespace CSVTest
-{
+﻿namespace CSVTest {
   using System;
   using System.Collections.Generic;
   using System.Text;
@@ -10,12 +9,10 @@
   using KatKits;
   using System.IO;
 
-  public class CusCSVTest
-  {
+  public class CusCSVTest {
     [CSVTable(TableName = "TestTable")]
     [CSVTable(TableName = "TestTable2")]
-    public class CSVTestClass
-    {
+    public class CSVTestClass {
       [CSVColumn(TableName = "TestTable", ColumnName = "C1", Order = 0)]
       [CSVColumn(TableName = "TestTable2", ColumnName = "W1", Order = 0)]
       public int P1 { get; set; }
@@ -46,6 +43,7 @@
     [InlineData("\"1\r\n1\"", null)]
     //Multi Field
     [InlineData("aaa,bbb,ccc", null)]
+    [InlineData("aaa,bbb,,,,ccc", null)]
     [InlineData("aaa,bbb,ccc\n\r", null)]
     [InlineData("\"aaa\",\"bbb\",ccc", "aaa,bbb,ccc")]
     [InlineData("\"aaa\",\"bbb\",ccc\n\r", "aaa,bbb,ccc\n\r")]
@@ -54,13 +52,39 @@
     //Multi Line
     [InlineData("aaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc", null)]
     [InlineData("aaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc", null)]
-    public void ReadFromCSVText(string Text, string AlterN)
-    {
+    public void ReadFromCSVText(string Text, string AlterN) {
       if (AlterN == null) AlterN = Text;
       var Tb = new CSVTable();
       Tb.ParseFromText(Text);
       Assert.Equal(AlterN, Tb.ToCSVString());
     }
+    [Theory]
+    //Empty
+    [InlineData("", null)]
+    //One Field
+    [InlineData("1", null)]
+    [InlineData("\"\"\"1\"", null)]
+    [InlineData("\"1\"\"\"", null)]
+    [InlineData("1\n\r1", null)]
+    [InlineData("\"1\r\n1\"", null)]
+    //Multi Field
+    [InlineData("aaa,bbb,ccc", null)]
+    [InlineData("aaa,bbb,,,,ccc", null)]
+    [InlineData("aaa,bbb,ccc\n\r", null)]
+    [InlineData("\"aaa\",\"bbb\",ccc", "aaa,bbb,ccc")]
+    [InlineData("\"aaa\",\"bbb\",ccc\n\r", "aaa,bbb,ccc\n\r")]
+    [InlineData("\"aaa\",b \n\r bb,ccc", "aaa,b \n\r bb,ccc")]
+    [InlineData("\"aaa\",\"b \r\n bb\",ccc", "aaa,\"b \r\n bb\",ccc")]
+    //Multi Line
+    [InlineData("aaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc", null)]
+    [InlineData("aaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc", null)]
+    public void TestExpressRows(string Text, string AlterN) {
+      if (AlterN == null) AlterN = Text;
+      var Rows = CSVExpress.ReadRow(new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(Text)))).ToArray();
+      var K = Rows.Select(E => E.ToCSVString()).ToArray();
+      Assert.True(K.Length > 0);
+    }
+
     [Theory]
     //Empty
     [InlineData("", null)]
@@ -80,8 +104,7 @@
     //Multi Line
     [InlineData("aaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc\r\naaa,\"b \"\" bb\",ccc", null)]
     [InlineData("aaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc\r\naaa,\"b \"\"\r\n bb\",ccc", null)]
-    public void ReadFromCSVStream(string Text,string AlterN)
-    {
+    public void ReadFromCSVStream(string Text, string AlterN) {
       if (AlterN == null) AlterN = Text;
       var Tb = new CSVTable();
       Tb.ParseFromStream(new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(Text))));

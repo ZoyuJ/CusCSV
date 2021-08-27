@@ -9,6 +9,9 @@
 
   public class CSVField
   {
+    internal CSVField() {
+
+    }
     internal CSVField(CSVColumn Column)
     {
       this.Column = Column;
